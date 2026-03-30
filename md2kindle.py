@@ -82,21 +82,24 @@ def download_manga(url, target_path, lang, mode, start_val, end_val):
         save_as = "cbz-single"  
         range_args = ["--start-chapter", start_val, "--end-chapter", end_val]
         
+    # Construcción dinámica del comando para evitar errores de posición (como el de --language)
     cmd = [
         MANGADEX_DL_PATH,
         url,
         "--save-as", save_as,
-        "--language", lang,
-        *range_args,
-        "--path", target_path
+        "--language", lang
     ]
     
     # Solo aplicamos el filtro de oneshots si está activo en la configuración
     if mode == 'v' and SKIP_ONESHOTS_ON_VOLUME_MODE:
-        cmd.insert(5, "--no-oneshot-chapter")
+        cmd.append("--no-oneshot-chapter")
+    
+    # Añadimos el resto de parámetros al final
+    cmd.extend(range_args)
+    cmd.extend(["--path", target_path])
     
     print(f"\n[*] Ejecutando descarga en: {target_path}")
-    print(f"[*] Comando MANGADEX-DL: {' '.join(cmd)}\n")
+    print(f"[*] Comando MANGADEX-DL: {subprocess.list2cmdline(cmd)}\n")
     
     try:
         result = subprocess.run(cmd)
