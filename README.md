@@ -46,11 +46,59 @@ KCC_FORMAT = "MOBI" # Generacion del archivo DUAL
 ...
 ```
 
-### Desglose de "Flags" (KCC)
+## 🛠️ Guía de Configuración Avanzada
 
-- `-m`: Manga mode (Invierte el pase de páginas digital. Derecha -> Izquierda).
-- `-r 1`: Rotate double spreads (Convierte un "Spread" horizontal en 2 visualizaciones verticales girando 90° la imagen).
-- `-u`: Upscale (Expande cualquier margen para aprovechar el 100% de la pantalla conservando el Ratio Original).
+Para personalizar el comportamiento del script, puedes modificar las variables en la sección `CONFIGURACIÓN` de `md2kindle.py`. A continuación, se detallan los parámetros disponibles para cada herramienta:
+
+### 1. Kindle Comic Converter (KCC) - `kcc-c2e`
+
+Estos ajustes definen la calidad y formato del archivo final que leerá tu Kindle.
+
+- `KCC_PROFILE`: Determina la resolución de salida. `KO` es ideal para Kindle Oasis/Paperwhite 12.
+- `KCC_FORMAT`: Formato del archivo final (`MOBI`, `AZW3`, `KFX`, `EPUB`).
+
+#### KCC Custom Arguments (`KCC_CUSTOM_ARGS`)
+
+Usa estos "flags" dentro de la lista (ej: `["-m", "-u"]`).
+
+| Flag | Descripción | Recomendación |
+| :--- | :--- | :--- |
+| `-m` | **Manga Mode**: Activa la lectura de Derecha a Izquierda (RTL). | **On** |
+| `-r 1` | **Rotate Spreads**: Detecta páginas dobles y las rota 90°. | **On** |
+| `-u` | **Upscale**: Escala imágenes pequeñas para llenar la pantalla. | **On** |
+| `-w` | **Webtoon**: Procesa archivos como tiras verticales infinitas. | **On** (Solo Webtoons) |
+| `-c` | **Color**: Desactiva la conversión a escala de grises. | **On** (Kindle Color) |
+| `-q` | **Quality**: Algoritmo de redimensionado de alta calidad. | **On** |
+
+### 2. MangaDex Downloader - Motor de Extracción
+
+Configura cómo el motor (`mangadex-dl`) busca y filtra los capítulos en los servidores.
+
+- **`SKIP_ONESHOTS_ON_VOLUME_MODE`**:
+  - `True`: (Recomendado) Ignora capítulos tipo "Oneshot" o especiales.
+  - `False`: Incluye absolutamente todo lo listado.
+- **`DEFAULT_LANGUAGE`**: Establece el idioma de descarga. Si un capítulo no existe en este idioma, el script preguntará qué versión bajar.
+
+#### Códigos de Idioma Prioritarios
+
+| Prioridad | Código | Idioma |
+| :--- | :---: | :--- |
+| **🥇 Principal** | `es-la` | Español (Latinoamérica) |
+| **🥈 Alternativo** | `es` | Español (España) |
+| **🇬🇧 Global** | `en` | Inglés |
+| **🇯🇵 Original** | `ja` | Japonés |
+| **🇧🇷 Extra** | `pt-br` | Portugués (Brasil) |
+
+> [!TIP]
+> Puedes ver la lista completa (más de 40 idiomas) ejecutando `mangadex-dl --list-languages` en tu terminal.
+
+### 3. Automatización del Script
+
+Ajustes de lógica interna de `md2kindle.py`.
+
+- `DELETE_CBZ_AFTER_CONVERSION`:
+  - `False`: Conserva el archivo `.cbz` original.
+  - `True`: Borra el `.cbz` automáticamente para ahorrar espacio.
 
 ---
 
@@ -75,11 +123,11 @@ Habiendo descargado o clonado la carpeta en Windows, bastará con **Hacer doble 
 
 Al iniciarse te encontrarás con las siguientes preguntas:
 
-> - **URL de MangaDex**: Link completo del Manga. (ej: `https://mangadex.org/title/8015...`)
-> - **Nombre de la carpeta**: Carpeta donde organizarás todas sus entregas a futuro. (ej. `Berserk`)
-> - **Idioma**: Por defecto usa latino (`es-la`). Pulsar enter lo confirmará.
-> - **Volumen o Capítulo**: Escribir la letra de la dimensión en que deseas compilar. (`v` o `c`)
-> - **Rangos de descarga**: Iniciar y determinar el fin de la descarga (ej: para un solo Volumen contestar `25` en ambas preguntas).
+- **URL de MangaDex**: Link completo del Manga. (ej: `https://mangadex.org/title/8015...`)
+- **Nombre de la carpeta**: Carpeta donde organizarás todas sus entregas a futuro. (ej. `Berserk`)
+- **Idioma**: Por defecto usa latino (`es-la`). Pulsar enter lo confirmará.
+- **Volumen o Capítulo**: Escribir la letra de la dimensión en que deseas compilar. (`v` o `c`)
+- **Rangos de descarga**: Iniciar y determinar el fin de la descarga (ej: para un solo Volumen contestar `25` en ambas preguntas).
 
 ---
 

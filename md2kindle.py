@@ -1,6 +1,7 @@
 import os
 import subprocess
 import glob
+import re
 
 # ==========================================
 # CONFIGURACIÓN
@@ -17,14 +18,13 @@ OUTPUT_FOLDER_KCC = r"C:\KCC Output"
 KCC_PROFILE = "KO"  # KO = Kindle Oasis 2/3 / Paperwhite 12
 KCC_FORMAT = "MOBI" # Formato Dual MOBI/AZW3
 KCC_CUSTOM_ARGS = ["-m", "-r", "1", "-u"] 
-# -m: Manga mode (Der a Izq)
-# -r 1: Rotate double spreads (Páginas dobles)
-# -u: Upscale manteniendo Aspect Ratio
+# Para ver la lista completa de argumentos validos, consulta el README.md
 
 # Ajustes generales
-DELETE_CBZ_AFTER_CONVERSION = False # ¡Cambiar a True si deseas borrar los .cbz originales!
+DELETE_CBZ_AFTER_CONVERSION = False 
 DEFAULT_LANGUAGE = "es-la"
-SKIP_ONESHOTS_ON_VOLUME_MODE = True # Omitir capítulos marcados como "oneshot" (pilotos/especiales) en Tomos.
+SKIP_ONESHOTS_ON_VOLUME_MODE = True 
+# Consulta el README.md para mas detalles sobre estos ajustes.
 # ==========================================
 
 def clear_screen():
@@ -149,14 +149,16 @@ def main():
             os.makedirs(folder, exist_ok=True)
             if download_manga(url, folder, lang, 'v', vol, vol):
                 # --- Limpieza de capítulos huérfanos (Orphans) ---
-                # Borramos cualquier CBZ que no sea "Vol. {vol}" para evitar capítulos sueltos adelantados
+                # Borramos cualquier CBZ que no sea el volumen solicitado para evitar capítulos sueltos adelantados
+                # Usamos Regex para ser flexibles con puntos, espacios y ceros a la izquierda (ej. "Vol. 027")
                 all_cbz = glob.glob(os.path.join(folder, "*.cbz"))
+                vol_pattern = rf"vol\.?\s*0*{vol}\b"
+                
                 for cbz_file in all_cbz:
                     filename = os.path.basename(cbz_file).lower()
-                    # Si el archivo no contiene "vol" seguido del número, es un huérfano (ej: Berserk Ch 383)
-                    # O si explícitamente dice "no volume"
-                    expected_pattern = f"vol {vol}"
-                    if expected_pattern.lower() not in filename or "no volume" in filename:
+                    is_valid_volume = re.search(vol_pattern, filename, re.IGNORECASE)
+                    
+                    if not is_valid_volume or "no volume" in filename:
                         print(f"[-] Eliminando capítulo huérfano/extra: {os.path.basename(cbz_file)}")
                         os.remove(cbz_file)
                 
