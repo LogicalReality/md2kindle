@@ -2,6 +2,9 @@ import os
 import subprocess
 import glob
 import re
+import json
+import urllib.request
+import urllib.parse
 
 # ==========================================
 # CONFIGURACIÓN
@@ -30,6 +33,75 @@ SKIP_ONESHOTS_ON_VOLUME_MODE = True
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def sanitize_filename(filename):
+    """Elimina caracteres no permitidos en nombres de archivos de Windows"""
+    return re.sub(r'[\\/*?:"<>|]', "", filename).strip()
+
+def get_manga_title_options(url):
+    """Consulta la API de MangaDex para obtener títulos y autor real"""
+    try:
+        # Extraer UUID de la URL (ej. https://mangadex.org/title/UUID/slug)
+        match = re.search(r"title/([a-f0-9-]{36})", url)
+        if not match:
+            return [], "MangaDex"
+        
+        uuid = match.group(1)
+        # Incluimos la relación del autor para obtener su nombre real
+        api_url = f"https://api.mangadex.org/manga/{uuid}?includes[]=author"
+        
+        print(f"[*] Consultando datos en MangaDex API...")
+        with urllib.request.urlopen(api_url) as response:
+            res_data = json.loads(response.read().decode())["data"]
+            data = res_data["attributes"]
+            relationships = res_data.get("relationships", [])
+        
+        # Extraer nombre del autor
+        # Fallback: Usamos "MangaDex" por defecto por si el manga no tiene autor registrado en la base de datos (evita crasheos)
+        author_name = "MangaDex"
+        for rel in relationships:
+            if rel["type"] == "author" and "attributes" in rel:
+                author_name = rel["attributes"]["name"] # Sobrescribe con el autor real
+                break
+            
+        options = []
+        # Títulos a buscar (Prioridades y Etiquetas)
+        lang_map = {
+            "ja-ro": "Romaji",
+            "en": "English",
+            "es-la": "Spanish (Latino)",
+            "es": "Spanish"
+        }
+        
+        # 1. Título principal
+        main_title = data.get("title", {})
+        for lang, value in main_title.items():
+            if lang in lang_map:
+                options.append({"label": lang_map[lang], "title": sanitize_filename(value)})
+        
+        # 2. Títulos alternativos
+        alt_titles = data.get("altTitles", [])
+        for alt in alt_titles:
+            for lang, value in alt.items():
+                if lang in lang_map:
+                    options.append({"label": lang_map[lang], "title": sanitize_filename(value)})
+        
+        # Eliminar duplicados manteniendo el orden
+        seen = set()
+        unique_options = []
+        for opt in options:
+            if opt["title"].lower() not in seen:
+                seen.add(opt["title"].lower())
+                unique_options.append(opt)
+        
+        # Ordenar por prioridad de idioma según el mapa
+        priority = ["ja-ro", "en", "es-la", "es"]
+        unique_options.sort(key=lambda x: priority.index(next(k for k, v in lang_map.items() if v == x["label"])) if any(v == x["label"] for v in lang_map.values()) else 99)
+
+        return unique_options, author_name
+    except Exception as e:
+        print(f"[!] Error al consultar API de MangaDex: {e}")
+        return [], "MangaDex"
+
 def get_user_input():
     clear_screen()
     print("=========================================")
@@ -38,7 +110,33 @@ def get_user_input():
     
     url = input("\n> URL de MangaDex: ").strip()
     
-    title_folder = input("> Nombre de la carpeta del manga (ej. Berserk): ").strip()
+    # Detección de títulos desde MangaDex
+    options, author_name = get_manga_title_options(url)
+    title_folder = ""
+    
+    if options:
+        print(f"\nAutor detectado: {author_name}")
+        print("Selecciona el nombre para la carpeta del manga:")
+        for i, opt in enumerate(options, 1):
+            label_display = f"[{opt['label']}]"
+            print(f"  {i}. {label_display:<18} {opt['title']}")
+        print(f"  {len(options) + 1}. [Manual]           Escribir nombre personalizado...")
+        
+        choice = input(f"\nSelecciona una opción [1]: ").strip()
+        
+        if not choice:
+            title_folder = options[0]["title"]
+        elif choice.isdigit():
+            idx = int(choice)
+            if 1 <= idx <= len(options):
+                title_folder = options[idx-1]["title"]
+            else:
+                title_folder = input("> Nombre de la carpeta: ").strip()
+        else:
+            # Si el usuario escribió un nombre directamente en lugar de un número
+            title_folder = choice
+    else:
+        title_folder = input("\n> Nombre de la carpeta del manga (ej. Berserk): ").strip()
     
     lang = input(f"> Idioma [Presiona Enter para usar default '{DEFAULT_LANGUAGE}']: ").strip()
     if not lang:
@@ -55,7 +153,7 @@ def get_user_input():
     if not end_val:
         end_val = start_val
         
-    return url, title_folder, lang, mode, start_val, end_val
+    return url, title_folder, lang, mode, start_val, end_val, author_name
 
 def parse_range(start, end):
     """Convierte un rango de strings en una lista de floats (soporta 25.5 etc)"""
@@ -108,7 +206,8 @@ def download_manga(url, target_path, lang, mode, start_val, end_val):
         print(f"\n[!] Excepción al ejecutar mangadex-dl: {e}")
         return False
 
-def convert_with_kcc(target_path):
+def convert_with_kcc(target_path, author="MangaDex"):
+    """Convierte archivos CBZ en Kindle-friendly formats reflejando la estructura original"""
     search_pattern = os.path.join(target_path, "**", "*.cbz")
     cbz_files = glob.glob(search_pattern, recursive=True)
     
@@ -117,16 +216,27 @@ def convert_with_kcc(target_path):
         if not cbz_files:
             return
     
+    # Calcular ruta de salida replicando la estructura de carpetas
+    try:
+        rel_path = os.path.relpath(target_path, OUTPUT_FOLDER_MANGA)
+        final_output = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
+        os.makedirs(final_output, exist_ok=True)
+    except Exception as e:
+        print(f"[!] Error al crear carpeta de salida en KCC: {e}")
+        final_output = OUTPUT_FOLDER_KCC
+
     for cbz_file in cbz_files:
         print(f"\n[+] Procesando con KCC: {os.path.basename(cbz_file)}")
         cmd = [
             KCC_C2E_PATH,
             "-p", KCC_PROFILE,
             "-f", KCC_FORMAT,
-            "-o", OUTPUT_FOLDER_KCC
+            "-o", final_output,
+            "-a", author  # Inyección del autor real
         ] + KCC_CUSTOM_ARGS + [cbz_file]
         
         try:
+            print(f"[*] Guardando en: {final_output}")
             result = subprocess.run(cmd)
             if result.returncode == 0 and DELETE_CBZ_AFTER_CONVERSION:
                 os.remove(cbz_file)
@@ -138,7 +248,7 @@ def main():
         print("[ERROR] No se encontraron los ejecutables.")
         return
         
-    url, title, lang, mode, start, end = get_user_input()
+    url, title, lang, mode, start, end, author = get_user_input()
     base_path = os.path.join(OUTPUT_FOLDER_MANGA, title)
 
     if mode == 'v':
@@ -149,8 +259,6 @@ def main():
             os.makedirs(folder, exist_ok=True)
             if download_manga(url, folder, lang, 'v', vol, vol):
                 # --- Limpieza de capítulos huérfanos (Orphans) ---
-                # Borramos cualquier CBZ que no sea el volumen solicitado para evitar capítulos sueltos adelantados
-                # Usamos Regex para ser flexibles con puntos, espacios y ceros a la izquierda (ej. "Vol. 027")
                 all_cbz = glob.glob(os.path.join(folder, "*.cbz"))
                 vol_pattern = rf"vol\.?\s*0*{vol}\b"
                 
@@ -162,7 +270,7 @@ def main():
                         print(f"[-] Eliminando capítulo huérfano/extra: {os.path.basename(cbz_file)}")
                         os.remove(cbz_file)
                 
-                convert_with_kcc(folder)
+                convert_with_kcc(folder, author)
     else:
         # Modo Capítulo: Agrupado
         suffix = f"Cap {start}" + (f"-{end}" if start != end else "")
@@ -170,7 +278,7 @@ def main():
         os.makedirs(folder, exist_ok=True)
         print(f"\n[*] Detectado modo CAPÍTULO. Agrupando rango {start}-{end}...")
         if download_manga(url, folder, lang, 'c', start, end):
-            convert_with_kcc(folder)
+            convert_with_kcc(folder, author)
 
     print(f"\n=========================================")
     print(f" Proceso Finalizado. Archivos generados en:\n {OUTPUT_FOLDER_KCC}")
