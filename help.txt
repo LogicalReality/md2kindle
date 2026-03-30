@@ -1,0 +1,278 @@
+usage: mangadex-dl.exe [-h]
+                       [--type {manga,list,chapter,legacy-manga,legacy-chapter,cover}]
+                       [--replace] [--filter FILTER]
+                       [--download-mode {default,unread}] [--path DIRECTORY]
+                       [--filename-single FILENAME_SINGLE]
+                       [--filename-volume FILENAME_VOLUME]
+                       [--filename-chapter FILENAME_CHAPTER] [--search]
+                       [--use-alt-details] [--create-manga-info]
+                       [--manga-info-format {csv,mihon,json}]
+                       [--manga-info-filepath MANGA_INFO_FILEPATH]
+                       [--manga-info-only] [--group GROUP_ID]
+                       [--group-nomatch-behaviour {ignore,fallback}]
+                       [-lang LANGUAGE] [--list-languages]
+                       [-vcl VOLUME_COVER_LANGUAGE] [--start-volume VOLUME]
+                       [--end-volume VOLUME] [--start-chapter CHAPTER]
+                       [--end-chapter CHAPTER] [--no-oneshot-chapter]
+                       [--no-group-name] [--use-chapter-title] [--range RANGE]
+                       [--sort-by {chapter,volume}] [--use-chapter-cover]
+                       [--use-volume-cover] [--ignore-missing-chapters]
+                       [--create-no-volume] [--order {newest,oldest}]
+                       [--start-page NUM_PAGE] [--end-page NUM_PAGE]
+                       [--use-compressed-image]
+                       [--cover {original,512px,256px,none}] [--login]
+                       [--login-method {oauth2,legacy}]
+                       [--login-username USERNAME] [--login-password PASSWORD]
+                       [--login-api-id API_CLIENT_ID]
+                       [--login-api-secret API_CLIENT_SECRET] [--login-cache]
+                       [--save-as {raw,raw-volume,raw-single,pdf,pdf-volume,pdf-single,cbz,cbz-volume,cbz-single,cb7,cb7-volume,cb7-single,epub,epub-volume,epub-single}]
+                       [--proxy SOCKS / HTTP Proxy] [--proxy-env]
+                       [--force-https] [--delay-requests TIME_IN_SECONDS]
+                       [--dns-over-https PROVIDER] [--timeout TIME_IN_SECONDS]
+                       [--http-retries NUMBERS_OR_UNLIMITED]
+                       [--input-pos INPUT_POS] [-pipe] [-v] [--no-track]
+                       [--no-metadata] [--page-size PAGE_SIZE] [--run-forever]
+                       [--log-level LEVEL] [--progress-bar-layout LAYOUT]
+                       [--stacked-progress-bar-order ORDER] [--update]
+                       [URL]
+
+A Command-line tool to download manga from MangaDex, written in Python
+
+positional arguments:
+  URL                   MangaDex URL or a file containing MangaDex URLs. See
+                        https://mangadex-downloader.rtfd.io/en/latest/cli_ref/
+                        index.html#available-commands for available commands
+
+options:
+  -h, --help            show this help message and exit
+  --type, -t {manga,list,chapter,legacy-manga,legacy-chapter,cover}
+                        Override type MangaDex url. By default, it auto detect
+                        given url
+  --replace, -r         Replace manga if exist
+  --filter, -ft FILTER  Apply filter to search and random manga
+  --download-mode, -dm {default,unread}
+                        Set download mode, you can set to 'default' or
+                        'unread'. If you set to 'unread', the app will
+                        download unread chapters only (require
+                        authentication). If you set to 'default' the app will
+                        download all chapters
+
+Path:
+  --path, --folder, -d DIRECTORY
+                        Store manga / chapter to specified directory. this
+                        option support placeholders, read https://mangadex-dl.
+                        mansuf.link/en/stable/cli_ref/path_placeholders.html
+                        for more info
+  --filename-single, -fs FILENAME_SINGLE
+                        Set filename for single format, read https://mangadex-
+                        dl.mansuf.link/en/stable/cli_ref/path_placeholders.htm
+                        l for more info
+  --filename-volume, -fv FILENAME_VOLUME
+                        Set filename for volume format, read https://mangadex-
+                        dl.mansuf.link/en/stable/cli_ref/path_placeholders.htm
+                        l for more info
+  --filename-chapter, -fc FILENAME_CHAPTER
+                        Set filename for chapter format, read
+                        https://mangadex-dl.mansuf.link/en/stable/cli_ref/path
+                        _placeholders.html for more info
+
+Search:
+  --search, -s          Search manga and then download it
+
+Manga:
+  --use-alt-details, -uad
+                        Use alternative title and description manga
+  --create-manga-info, -cmi
+                        Store manga information such as title, authors,
+                        artists, description, and tags in a file called
+                        'manga_info.csv'. By default this file will save to
+                        csv format you can change this in --manga-info-format
+  --manga-info-format, -mif {csv,mihon,json}
+                        Change file format for manga information file
+                        (manga_info.csv). Available options are: csv, mihon,
+                        json. NOTE: `mihon` format are written in dict or
+                        Object (in js) compared to other manga info formats
+                        (such as csv and json). The other formats are written
+                        in array or list. Also `mihon` file extension is .json
+  --manga-info-filepath, -mip MANGA_INFO_FILEPATH
+                        Change file location to store manga information.
+                        Default to './manga_info.{manga_info_format}'.
+                        Available placeholders: {download_path} and
+                        {manga_info_format}, placeholder {download_path} is
+                        value from --path option and placeholder
+                        {manga_info_format} is from --manga-info-format option
+  --manga-info-only, -mio
+                        Store manga information without downloading manga. The
+                        application will exit after writing manga information
+
+Group:
+  --group, -g GROUP_ID  Filter each chapter with different scanlation group.
+                        Filter with user also supported. You can also put
+                        `all` value, this will make download all chapters from
+                        all groups available in the manga
+  --group-nomatch-behaviour, -gnb {ignore,fallback}
+                        Change behaviour for group filtering if it doesn't
+                        match. By default, it set to 'ignore'. Which mean it
+                        will ignore the chapter if the chapter doesn't match
+                        with specified group. If you set it to 'fallback' the
+                        app will find another chapter if the chapter doesn't
+                        match with specified group
+
+Language:
+  -lang, --language LANGUAGE
+                        Download manga in given language, to see all
+                        languages, use --list-languages option
+  --list-languages, -ll
+                        List all available languages
+  -vcl, --volume-cover-language VOLUME_COVER_LANGUAGE
+                        Override volume cover language. If this option is not
+                        set, it will follow --language option
+
+Volume:
+  --start-volume, -sv VOLUME
+                        Start download chapter from given volume number
+  --end-volume, -ev VOLUME
+                        Stop download chapter from given volume number
+
+Chapter:
+  --start-chapter, -sc CHAPTER
+                        Start download chapter from given chapter number
+  --end-chapter, -ec CHAPTER
+                        Stop download chapter from given chapter number
+  --no-oneshot-chapter, -noc
+                        If manga has oneshot chapter, it will be ignored.
+  --no-group-name, -ngn
+                        Do not use scanlation group name for each chapter
+  --use-chapter-title, -uct
+                        Use chapter title for each chapters. NOTE: This option
+                        is useless if used with any single and volume format.
+  --range, -rg RANGE    [DISABLED] A range pattern to download specific
+                        chapters
+  --sort-by {chapter,volume}
+                        Download sorting method, by default it's selected to
+                        "volume"
+  --use-chapter-cover, -ucc
+                        Enable creation of chapter info (cover) for any single
+                        or volume formats. See https://mangadex-
+                        dl.mansuf.link/en/stable/cli_ref/chapter_info.html for
+                        more info. NOTE: chapter info creation are not enabled
+                        if you are using any chapter format (cbz, pdf, raw,
+                        etc)
+  --use-volume-cover, -uvc
+                        Enable creation of volume cover for any volume
+                        formats. Volume cover will be placed in first page in
+                        each volume files. NOTE: Volume cover will be not
+                        created in chapter (cbz, pdf, raw, etc) and single
+                        formats
+  --ignore-missing-chapters, -imc
+                        Ignore missing downloaded chapters. This will prevent
+                        the application to re-download the missing chapters.
+  --create-no-volume, -cnv
+                        Merge all chapters that has no volume into 1 file for
+                        'volume' format.
+  --order {newest,oldest}
+                        Change chapter order, by default it set to 'newest'.
+                        Which mean it always try to download the newest
+                        chapter. Available options: newest, oldest
+
+Chapter Page:
+  --start-page, -sp NUM_PAGE
+                        Start download chapter page from given page number
+  --end-page, -ep NUM_PAGE
+                        Stop download chapter page from given page number
+
+Images:
+  --use-compressed-image, -uci
+                        Use low size images manga (compressed quality)
+  --cover, -c {original,512px,256px,none}
+                        Choose quality cover, default is "original"
+
+Authentication:
+  --login, -l           Login to MangaDex
+  --login-method, -lm {oauth2,legacy}
+                        Set authentication method for MangaDex, by default it
+                        set to `legacy`. Which is directly input (username or
+                        email) and password to the application
+  --login-username, -lu USERNAME
+                        Login to MangaDex with username or email (you will be
+                        prompted to input password if --login-password are not
+                        present)
+  --login-password, -lp PASSWORD
+                        Login to MangaDex with password (you will be prompted
+                        to input username if --login-username are not present)
+  --login-api-id, -lai API_CLIENT_ID
+                        Login to MangaDex with API Client. This option is
+                        working if you use 'oauth2' login method (--login-
+                        method oauth2). Also you will be prompted to input API
+                        client secret if --login-api-secret are not present
+  --login-api-secret, -las API_CLIENT_SECRET
+                        Login to MangaDex with API Client. This option is
+                        working if you use 'oauth2' login method (--login-
+                        method oauth2). Also you will be prompted to input API
+                        client id if --login-api-id are not present
+  --login-cache, -lc    Cache authentication token. You don't have to re-login
+                        with this option. You must set
+                        MANGADEXDL_CONFIG_ENABLED=1 in your environment
+                        variables before doing this, otherwise the app will
+                        throwing error. NOTE: Using this option can cause an
+                        attacker in your computer may grab your authentication
+                        cache and using it for malicious actions. USE IT WITH
+                        CAUTION !!!
+
+Save as format:
+  --save-as, -f {raw,raw-volume,raw-single,pdf,pdf-volume,pdf-single,cbz,cbz-volume,cbz-single,cb7,cb7-volume,cb7-single,epub,epub-volume,epub-single}
+                        Select save as format, default to `raw`
+
+Network:
+  --proxy, -p SOCKS / HTTP Proxy
+                        Set http/socks proxy
+  --proxy-env, -pe      use http/socks proxy from environments
+  --force-https, -fh    Force download images in standard HTTPS port 443
+  --delay-requests, -dr TIME_IN_SECONDS
+                        Set delay for each requests send to MangaDex server
+  --dns-over-https, -doh PROVIDER
+                        Enable DNS-over-HTTPS (DoH)
+  --timeout TIME_IN_SECONDS
+                        Set timeout for each HTTPS(s) requests
+  --http-retries NUMBERS_OR_UNLIMITED
+                        Set HTTP retries, use this if you want to set how much
+                        to retries if the app failed to send HTTP requests to
+                        MangaDex API. Value must be numbers or "unlimited", by
+                        default it set to 5
+
+Miscellaneous:
+  --input-pos INPUT_POS
+                        Automatically select choices in selectable prompt
+                        (list, library, followed-list command). You also can
+                        put asterisk (*) in this option to select all choices
+  -pipe                 Download from pipe input
+  -v, --version         Print mangadex-downloader version
+  --no-track            Disable download tracking. NOTE: If you enable this,
+                        the application will not verify images and chapters.
+  --no-metadata         Disable metadata creation (ComicInfo.xml) in any cbz
+                        format (cbz, cbz-volume, cbz-single)
+  --page-size PAGE_SIZE
+                        Set maximum items displayed in page for commands and
+                        search mode. For example: 'mangadex-dl library --login
+                        --page-size 50', this example command will display 50
+                        items per page. If you set to 0, the application will
+                        follow default limit size depends on what type of
+                        command
+  --run-forever         Allow the application to run indefinitely with 5
+                        seconds delay for repeating the same job
+
+Console output:
+  --log-level LEVEL     Set logger level, available options: CRITICAL, ERROR,
+                        WARNING, INFO, DEBUG, NOTSET. Default level is INFO
+  --progress-bar-layout, -pbl LAYOUT
+                        Set progress bar layout, available options: default,
+                        stacked, none. Default layout is 'default'
+  --stacked-progress-bar-order, -spb-order ORDER
+                        Set stacked progress bar order, available options:
+                        volumes, chapters, pages, file sizes, convert.
+                        Multiple values is supported, separated by comma.
+                        Default order is 'volumes, chapters, pages, file
+                        sizes, convert'
+
+Update application:
+  --update              Update mangadex-downloader to latest version
