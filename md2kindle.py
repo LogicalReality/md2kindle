@@ -178,10 +178,24 @@ def get_user_input():
                 title_folder = options[idx-1]["title"]
             else:
                 title_folder = input("> Nombre de la carpeta: ").strip()
+                while not title_folder and not manga_uuid:
+                    title_folder = input("> El nombre no puede estar vacío. Inténtalo de nuevo: ").strip()
         else:
             title_folder = choice
     else:
         title_folder = input("\n> Nombre de la carpeta del manga (ej. Berserk): ").strip()
+        while not title_folder and not manga_uuid:
+            title_folder = input("> El nombre no puede estar vacío. Inténtalo de nuevo: ").strip()
+
+    # --- FALLBACK DE TÍTULO (Resiliencia ante nombres prohibidos en Windows) ---
+    if not title_folder:
+        if manga_uuid:
+            title_folder = manga_uuid
+            print(f"\n[!] Título inválido o vacío tras sanitización. Usando UUID como fallback.")
+            print(f"[*] Carpeta destino: {title_folder}")
+        else:
+            title_folder = "Manga_Sin_Nombre"
+            print(f"\n[!] No se pudo obtener título ni UUID. Usando genérico: {title_folder}")
     
     # Lógica de Idioma Inteligente
     detected_lang = suggestions.get("lang")
