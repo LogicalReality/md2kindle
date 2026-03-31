@@ -132,6 +132,18 @@ def get_manga_title_options(url):
         print(f"[!] Error inesperado al procesar URL: {e}")
         return [], "MangaDex", suggestions, None
 
+def get_manga_aggregate(manga_uuid, lang):
+    """Obtiene la estructura completa de Tomos y Capítulos desde MangaDex"""
+    try:
+        api_url = f"https://api.mangadex.org/manga/{manga_uuid}/aggregate?translatedLanguage[]={lang}"
+        data = get_api_data(api_url)
+        if data and data.get("result") == "ok":
+            return data.get("volumes", {})
+        return {}
+    except Exception as e:
+        print(f"[!] Aviso: No se pudo obtener la estructura de auditoría: {e}")
+        return {}
+
 def get_user_input():
     clear_screen()
     print("=========================================")
@@ -208,25 +220,121 @@ def get_user_input():
     if not end_val:
         end_val = start_val
         
-    return url, title_folder, lang, mode, start_val, end_val, author_name
+    skip_oneshots = input("> ¿Excluir capítulos 'Oneshot' / Promocionales? [S/n]: ").strip().lower() != 'n'
+        
+    return url, title_folder, lang, mode, start_val, end_val, author_name, manga_uuid, skip_oneshots
 
 def parse_range(start, end):
-    """Convierte un rango de strings en una lista de floats (soporta 25.5 etc)"""
+    """Convierte un rango de strings en una lista. Soporta decimales (25.5) y alfanuméricos (S1)"""
     try:
         s = float(start)
         e = float(end)
         if s == e:
             return [start]
         
-        # Generamos lista de enteros si son exactos, de lo contrario solo retornamos el rango original
+        # Generamos lista de enteros si son exactos, de lo contrario solo retornamos los extremos
         if s.is_integer() and e.is_integer():
             return [str(i) for i in range(int(s), int(e) + 1)]
         else:
-            return [start, end] # Fallback simple
-    except:
+            return [start, end]
+    except ValueError:
+        # Si no es un número (ej. "S1", "Extra"), devolvemos como literal.
+        if start == end:
+            return [start]
         return [start]
 
-def download_manga(url, target_path, lang, mode, start_val, end_val):
+def audit_and_cleanup(target_path, aggregate_data, mode, start_val, end_val, skip_oneshots):
+    """
+    Realiza una auditoría inteligente y limpia huérfanos bajados por error.
+    Usa la estructura real informada por la API de MangaDex.
+    """
+    if not aggregate_data:
+        return # Si no hay datos de la API, fall in safe mode (no borrar nada)
+        
+    expected_chapters = set()
+    
+    if mode == 'v':
+        volumes_to_check = parse_range(start_val, end_val)
+        for expected_vol in volumes_to_check:
+            # Buscar la key exacta del volumen ("1", "S1", "none")
+            vol_data = aggregate_data.get(expected_vol)
+            if not vol_data:
+                # Intento fallback para tratar "1.0" como "1" o viceversa
+                fallback_key = str(int(float(expected_vol))) if expected_vol.replace('.','',1).isdigit() and expected_vol.endswith('.0') else expected_vol
+                vol_data = aggregate_data.get(fallback_key)
+            
+            if vol_data and "chapters" in vol_data:
+                for ch_dict in vol_data["chapters"].values():
+                    # Solo añadir si no hemos decidido ignorar unoshoots
+                    is_oneshot = ch_dict.get("chapter") == "none" or ch_dict.get("chapter") is None
+                    if is_oneshot and skip_oneshots:
+                        continue
+                    # La key del diccionario es casi siempre el numero del capitulo
+                    if ch_dict.get("chapter") != "none":
+                        expected_chapters.add(str(ch_dict.get("chapter")))
+
+    else: # Modo Capítulo
+        chapters_to_check = parse_range(start_val, end_val)
+        for expected_ch in chapters_to_check:
+            expected_chapters.add(str(expected_ch))
+
+    # Leer archivos locales
+    all_cbz = glob.glob(os.path.join(target_path, "*.cbz"))
+    found_chapters = set()
+    
+    print("\n--- Auditoría de Integridad ---")
+    
+    for cbz_file in all_cbz:
+        filename = os.path.basename(cbz_file)
+        
+        # mangadex-dl suele poner "- Ch. XX" o "Chapter XX" al final
+        # Funciona con variaciones "Ch. 5", "Ch. 5.5", "Ch. none"
+        match = re.search(r"Ch\.\s*([\d\.]+|none)\b", filename, re.IGNORECASE)
+        if not match:
+            match = re.search(r"Chapter\s*([\d\.]+|none)\b", filename, re.IGNORECASE)
+            
+        if match:
+            local_chap = match.group(1)
+            # Manejar ceros a la izquierda que mangadex-dl pudiera haber puesto
+            if local_chap.replace('.','',1).isdigit():
+                if "." in local_chap:
+                    local_chap_clean = str(float(local_chap)).rstrip('0').rstrip('.')
+                    if local_chap_clean == "": local_chap_clean = "0"
+                else:
+                    local_chap_clean = str(int(local_chap))
+            else:
+                local_chap_clean = local_chap # "none" u otros strings
+
+            found_chapters.add(local_chap_clean)
+            
+            # Limpieza (Orphans) segun Whitelist de la API
+            # Solo limpiamos si logramos extraer una lista de expecteds valida
+            if expected_chapters and local_chap_clean not in expected_chapters:
+                # Advertencia: Si es un Oneshot ("none") y el usuario no pidio borrarlos, no truncar
+                if local_chap_clean == "none" and not skip_oneshots:
+                    pass
+                else:
+                    print(f"[-] Eliminando capítulo extra no relacionado al objetivo: {filename}")
+                    try:
+                        os.remove(cbz_file)
+                    except Exception as e:
+                        print(f"[!] Error al borrar {filename}: {e}")
+        else:
+            # Si mangadex-dl lo descargo como volumen completo sin separar por capítulos
+            pass 
+
+    # Auditoria de Faltantes (Aviso no bloqueante)
+    if expected_chapters:
+        missing = expected_chapters - found_chapters
+        if missing:
+            print(f"[!] ADVERTENCIA: La API esperaba los siguientes capítulos para el/los volumen(es) solicitado(s), pero no se encontraron (posible censura o falta de traducción):")
+            # Ordenar si es numerico
+            sorted_missing = sorted(list(missing), key=lambda x: float(x) if x.replace('.','',1).isdigit() else 999)
+            print(f"    Faltantes: {sorted_missing}")
+        else:
+            print(f"[OK] Todos los capítulos esperados según la API están presentes.")
+
+def download_manga(url, target_path, lang, mode, start_val, end_val, skip_oneshots):
     if mode == 'v':
         save_as = "cbz-volume"
         range_args = ["--start-volume", start_val, "--end-volume", end_val]
@@ -243,8 +351,8 @@ def download_manga(url, target_path, lang, mode, start_val, end_val):
         "--language", lang
     ]
     
-    # Solo aplicamos el filtro de oneshots si está activo en la configuración
-    if mode == 'v' and SKIP_ONESHOTS_ON_VOLUME_MODE:
+    # Aplicamos el filtro de oneshots de forma dinamica segun el prompt del usuario
+    if skip_oneshots:
         cmd.append("--no-oneshot-chapter")
     
     # Añadimos el resto de parámetros al final
@@ -303,36 +411,50 @@ def main():
         print("[ERROR] No se encontraron los ejecutables.")
         return
         
-    url, title, lang, mode, start, end, author = get_user_input()
+    url, title, lang, mode, start, end, author, manga_uuid, skip_oneshots = get_user_input()
     base_path = os.path.join(OUTPUT_FOLDER_MANGA, title)
+    
+    # FASE 2: Obtener data de auditoria preventivamente
+    aggregate_data = {}
+    if manga_uuid:
+        print(f"\n[*] Consultando estructura de MangaDex para auditoría...")
+        aggregate_data = get_manga_aggregate(manga_uuid, lang)
 
     if mode == 'v':
         volumes = parse_range(start, end)
+        
+        # --- VALIDACIÓN PREVIA ---
+        if aggregate_data:
+            invalid_vols = [v for v in volumes if v not in aggregate_data]
+            if invalid_vols:
+                print(f"\n[!] ADVERTENCIA: Los siguientes volúmenes no aparecen en MangaDex: {invalid_vols}")
+                available = sorted(list(aggregate_data.keys()), key=lambda x: float(x) if x.replace('.','',1).isdigit() else 999)
+                print(f"    Opciones disponibles: {available}")
+                confirm = input("> ¿Deseas intentar la descarga de todos modos? [s/N]: ").strip().lower()
+                if confirm != 's':
+                    print("[*] Operación cancelada por el usuario.")
+                    return
+
         print(f"\n[*] Detectado modo VOLUMEN. Procesando {len(volumes)} tomo(s) individualmente...")
         for vol in volumes:
             folder = os.path.join(base_path, f"Vol {vol}")
             os.makedirs(folder, exist_ok=True)
-            if download_manga(url, folder, lang, 'v', vol, vol):
-                # --- Limpieza de capítulos huérfanos (Orphans) ---
-                all_cbz = glob.glob(os.path.join(folder, "*.cbz"))
-                vol_pattern = rf"vol\.?\s*0*{vol}\b"
-                
-                for cbz_file in all_cbz:
-                    filename = os.path.basename(cbz_file).lower()
-                    is_valid_volume = re.search(vol_pattern, filename, re.IGNORECASE)
-                    
-                    if not is_valid_volume or "no volume" in filename:
-                        print(f"[-] Eliminando capítulo huérfano/extra: {os.path.basename(cbz_file)}")
-                        os.remove(cbz_file)
-                
+            if download_manga(url, folder, lang, 'v', vol, vol, skip_oneshots):
+                # Limpieza y auditoría inteligente (reemplaza el regex viejo)
+                audit_and_cleanup(folder, aggregate_data, 'v', vol, vol, skip_oneshots)
                 convert_with_kcc(folder, author)
     else:
         # Modo Capítulo: Agrupado
         suffix = f"Cap {start}" + (f"-{end}" if start != end else "")
         folder = os.path.join(base_path, suffix)
+        
+        # --- VALIDACIÓN PREVIA (CAPÍTULOS) ---
+        # (Opcional, pero para capítulos es más complejo por los rangos)
+        
         os.makedirs(folder, exist_ok=True)
         print(f"\n[*] Detectado modo CAPÍTULO. Agrupando rango {start}-{end}...")
-        if download_manga(url, folder, lang, 'c', start, end):
+        if download_manga(url, folder, lang, 'c', start, end, skip_oneshots):
+            audit_and_cleanup(folder, aggregate_data, 'c', start, end, skip_oneshots)
             convert_with_kcc(folder, author)
 
     print(f"\n=========================================")
