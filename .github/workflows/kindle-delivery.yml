@@ -67,7 +67,8 @@ jobs:
 
       - name: Install Python Libraries
         run: |
-          pip install mangadex-downloader KindleComicConverter requests
+          pip install mangadex-downloader requests
+          pip install git+https://github.com/ciromattia/kcc.git
 
       - name: Run md2kindle
         env:
