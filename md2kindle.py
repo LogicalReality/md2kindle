@@ -5,17 +5,25 @@ import re
 import json
 import urllib.request
 import urllib.parse
+import argparse
+import sys
+import shutil
+import requests
 
 # ==========================================
 # CONFIGURACIÓN
 # ==========================================
-# Rutas a los ejecutables
-MANGADEX_DL_PATH = r"C:\mangadex-dl\mangadex-dl.exe"
-KCC_C2E_PATH = r"C:\Antigravity\md2kindle\kcc_c2e_9.6.2.exe"
+# Configuración Estática (Windows Local)
+MANGADEX_DL_PATH_WIN = r"C:\mangadex-dl\mangadex-dl.exe"
+KCC_C2E_PATH_WIN = r"C:\Antigravity\md2kindle\kcc_c2e_9.6.2.exe"
 
-# Carpetas de destino
-OUTPUT_FOLDER_MANGA = r"C:\Manga"
-OUTPUT_FOLDER_KCC = r"C:\KCC Output"
+# Búsqueda Dinámica (Nube / Linux)
+MANGADEX_DL_PATH = MANGADEX_DL_PATH_WIN if os.path.exists(MANGADEX_DL_PATH_WIN) else (shutil.which("mangadex-dl") or "mangadex-dl")
+KCC_C2E_PATH = KCC_C2E_PATH_WIN if os.path.exists(KCC_C2E_PATH_WIN) else (shutil.which("kcc-c2e") or "kcc-c2e")
+
+# Carpetas de destino (Con fallback relativo para la nube)
+OUTPUT_FOLDER_MANGA = r"C:\Manga" if os.path.exists(r"C:\Manga") else os.path.join(os.getcwd(), "downloads")
+OUTPUT_FOLDER_KCC = r"C:\KCC Output" if os.path.exists(r"C:\KCC Output") else os.path.join(os.getcwd(), "output")
 
 # Ajustes de KCC (Kindle Comic Converter)
 KCC_PROFILE = "KO"  # KO = Kindle Oasis 2/3 / Paperwhite 12
@@ -144,99 +152,211 @@ def get_manga_aggregate(manga_uuid, lang):
         print(f"[!] Aviso: No se pudo obtener la estructura de auditoría: {e}")
         return {}
 
-def get_user_input():
-    clear_screen()
-    print("=========================================")
-    print(" MangaDex -> Kindle Converter (md2kindle)")
-    print("=========================================")
-    
-    url_input = input("\n> URL de MangaDex: ").strip()
-    
-    # Detección de títulos y sugerencias desde MangaDex
-    options, author_name, suggestions, manga_uuid = get_manga_title_options(url_input)
-    title_folder = ""
 
-    # Redirección Canónica: Si tenemos el UUID, usamos la URL de /title/ para la descarga
-    # Esto garantiza que mangadex-dl pueda ver toda la obra y no solo un capítulo.
-    url = f"https://mangadex.org/title/{manga_uuid}" if manga_uuid else url_input
+def resolve_parameters():
+    """Resuelve los parámetros del script (CLI -> Inferencia -> Interactivo)"""
+    parser = argparse.ArgumentParser(description="MangaDex to Kindle CLI Converter")
+    parser.add_argument("url", nargs='?', help="URL de MangaDex (manga o capítulo)")
+    parser.add_argument("--title", help="Nombre de la carpeta del manga")
+    parser.add_argument("--lang", help="Idioma (es-la, en, es)")
+    parser.add_argument("--mode", choices=['v', 'c'], help="Modo: v (volumen) o c (capítulo)")
+    parser.add_argument("--start", help="Número inicial (volumen o capítulo)")
+    parser.add_argument("--end", help="Número final (volumen o capítulo)")
+    parser.add_argument("--skip-oneshots", action="store_true", help="Omitir capítulos oneshot")
+    parser.add_argument("--silent", action="store_true", help="Modo silencioso (menos logs)")
+    parser.add_argument("--telegram", action="store_true", help="Enviar archivos generados a Telegram")
     
-    if options:
-        print(f"\nAutor(es) detectado(s): {author_name}")
-        print("Selecciona el nombre para la carpeta del manga:")
-        for i, opt in enumerate(options, 1):
-            label_display = f"[{opt['label']}]"
-            print(f"  {i}. {label_display:<18} {opt['title']}")
-        print(f"  {len(options) + 1}. [Manual]           Escribir nombre personalizado...")
-        
-        choice = input(f"\nSelecciona una opción [1]: ").strip()
-        
-        if not choice:
-            title_folder = options[0]["title"]
-        elif choice.isdigit():
-            idx = int(choice)
-            if 1 <= idx <= len(options):
-                title_folder = options[idx-1]["title"]
+    args, unknown = parser.parse_known_args()
+    
+    # 1. ¿Estamos en modo CLI puro o interactivo?
+    is_interactive = len(sys.argv) <= 1
+    
+    # URL (Requerido o Interactivo)
+    url = args.url
+    if not url and is_interactive:
+        clear_screen()
+        print("=========================================")
+        print(" MangaDex -> Kindle Converter (md2kindle)")
+        print("=========================================")
+        url = input("\n> URL de MangaDex: ").strip()
+    elif not url:
+        print("[ERROR] Se requiere la --url en modo no interactivo.")
+        sys.exit(1)
+
+    # Inferencia inteligente desde la URL
+    options, author_name, suggestions, manga_uuid = get_manga_title_options(url)
+    
+    # Redirección Canónica
+    download_url = f"https://mangadex.org/title/{manga_uuid}" if manga_uuid else url
+    
+    # --- Título / Carpeta ---
+    title = args.title
+    if not title:
+        if is_interactive and options:
+            print(f"\nAutor(es) detectado(s): {author_name}")
+            print("Selecciona el nombre para la carpeta del manga:")
+            for i, opt in enumerate(options, 1):
+                label_display = f"[{opt['label']}]"
+                print(f"  {i}. {label_display:<18} {opt['title']}")
+            print(f"  {len(options) + 1}. [Manual]           Escribir nombre personalizado...")
+            
+            choice = input(f"\nSelecciona una opción [1]: ").strip()
+            if not choice:
+                title = options[0]["title"]
+            elif choice.isdigit() and 1 <= int(choice) <= len(options):
+                title = options[int(choice)-1]["title"]
             else:
-                title_folder = input("> Nombre de la carpeta: ").strip()
-                while not title_folder and not manga_uuid:
-                    title_folder = input("> El nombre no puede estar vacío. Inténtalo de nuevo: ").strip()
+                title = input("> Nombre de la carpeta: ").strip() if choice.lower() != str(len(options)+1) else input("> Nombre de la carpeta: ").strip()
+        elif options:
+            title = options[0]["title"] # Autopick el primero en CLI
         else:
-            title_folder = choice
-    else:
-        title_folder = input("\n> Nombre de la carpeta del manga (ej. Berserk): ").strip()
-        while not title_folder and not manga_uuid:
-            title_folder = input("> El nombre no puede estar vacío. Inténtalo de nuevo: ").strip()
+            title = manga_uuid if manga_uuid else "Manga_Sin_Nombre"
 
-    # --- FALLBACK DE TÍTULO (Resiliencia ante nombres prohibidos en Windows) ---
-    if not title_folder:
-        if manga_uuid:
-            title_folder = manga_uuid
-            print(f"\n[!] Título inválido o vacío tras sanitización. Usando UUID como fallback.")
-            print(f"[*] Carpeta destino: {title_folder}")
-        else:
-            title_folder = "Manga_Sin_Nombre"
-            print(f"\n[!] No se pudo obtener título ni UUID. Usando genérico: {title_folder}")
+    # --- Idioma con Fallback Inteligente ---
+    # Prioridad: es-la -> en -> es
+    lang_priority = ["es-la", "en", "es"]
+    lang = args.lang
     
-    # Lógica de Idioma Inteligente
-    detected_lang = suggestions.get("lang")
-    lang_to_use = DEFAULT_LANGUAGE
-    
-    if detected_lang and detected_lang != DEFAULT_LANGUAGE:
-        print(f"\n[!] Aviso: Esta URL apunta a un capítulo en '{detected_lang}'.")
-        print(f"    Tu configuración predeterminada es '{DEFAULT_LANGUAGE}'.")
-        choice_lang = input(f"> ¿Deseas cambiar a '{detected_lang}' para esta descarga? [s/N]: ").strip().lower()
-        if choice_lang == 's':
-            lang_to_use = detected_lang
-            print(f"[*] Idioma temporal cambiado a: {lang_to_use}")
-
-    lang = input(f"> Idioma [Presiona Enter para '{lang_to_use}']: ").strip()
     if not lang:
-        lang = lang_to_use
+        suggested_lang = suggestions.get("lang")
+        if requested_lang := suggested_lang if suggested_lang in lang_priority else None:
+            lang = requested_lang
+        elif is_interactive:
+            print(f"\n[Fallback] Idioma sugerido: {DEFAULT_LANGUAGE}")
+            lang_input = input(f"> Idioma [Enter para '{DEFAULT_LANGUAGE}']: ").strip()
+            lang = lang_input if lang_input else DEFAULT_LANGUAGE
+        else:
+            lang = DEFAULT_LANGUAGE
 
-    # Uso de sugerencias para modo y valores
-    sug_mode = suggestions["mode"] or "v"
-    mode_prompt = f"> ¿Volumen o Capítulo? [(v)ol / (c)ap] [{sug_mode}]: "
-    mode = input(mode_prompt).strip().lower()
+    # --- Modo y Rangos ---
+    mode = args.mode
     if not mode:
-        mode = sug_mode
-    
-    while mode not in ['v', 'c', 'vol', 'cap']:
-        mode = input("> Opción no válida. Usa 'v' o 'c': ").strip().lower()
-    mode = 'v' if mode in ['v', 'vol'] else 'c'
+        mode = suggestions.get("mode") or "v"
+        if is_interactive:
+            mode_input = input(f"> Modo [(v)ol / (c)ap] [{mode}]: ").strip().lower()
+            if mode_input: mode = 'v' if mode_input in ['v', 'vol'] else 'c'
 
-    sug_start = suggestions["start"] if mode == 'c' else suggestions["vol"]
-    start_prompt = f"> Número inicial" + (f" [{sug_start}]" if sug_start else "") + ": "
-    start_val = input(start_prompt).strip()
-    if not start_val and sug_start:
-        start_val = sug_start
+    start = args.start
+    if not start:
+        sug_start = suggestions.get("start") if mode == 'c' else suggestions.get("vol")
+        if is_interactive:
+            start_prompt = f"> Número inicial" + (f" [{sug_start}]" if sug_start else "") + ": "
+            start = input(start_prompt).strip() or sug_start
+        else:
+            start = sug_start if sug_start else "1"
+
+    end = args.end
+    if not end:
+        if is_interactive:
+            end = input(f"> Número final [Enter para '{start}']: ").strip() or start
+        else:
+            end = start
+
+    skip_oneshots = args.skip_oneshots if not is_interactive else (input("> ¿Excluir capítulos 'Oneshot' / Promocionales? [S/n]: ").strip().lower() != 'n')
+    silent = args.silent
+
+    return {
+        "url": download_url,
+        "title": title,
+        "lang": lang,
+        "mode": mode,
+        "start": start,
+        "end": end,
+        "author": author_name,
+        "manga_uuid": manga_uuid,
+        "skip_oneshots": skip_oneshots,
+        "silent": silent,
+        "telegram": args.telegram
+    }
+
+def upload_to_ffsend(file_path):
+    """Sube un archivo a ffsend (Firefox Send) - Encriptación de Extremo a Extremo"""
+    # Verificamos si ffsend está instalado en el sistema
+    ffsend_bin = shutil.which("ffsend")
+    if not ffsend_bin:
+        print("[!] ffsend no encontrado en el PATH. Es obligatorio para archivos > 45MB.")
+        return None
         
-    end_val = input(f"> Número final [Enter para '{start_val}']: ").strip()
-    if not end_val:
-        end_val = start_val
+    url_host = "https://send.vis.ee" # Instancia comunitaria estable
+    print(f"[*] Subiendo a {url_host} (Bóveda Cifrada E2EE)...")
+    
+    try:
+        # Comando: ffsend upload <file> --downloads 1 --expiry 1h --host <host> --quiet --no-interact
+        cmd = [
+            ffsend_bin, "upload", file_path,
+            "--downloads", "1",
+            "--expiry", "1h",
+            "--host", url_host,
+            "--quiet", "--no-interact"
+        ]
         
-    skip_oneshots = input("> ¿Excluir capítulos 'Oneshot' / Promocionales? [S/n]: ").strip().lower() != 'n'
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            link = result.stdout.strip()
+            return link
+        else:
+            print(f"[!] Error en ffsend (Code {result.returncode}): {result.stderr}")
+            return None
+    except Exception as e:
+        print(f"[!] Excepción al ejecutar ffsend: {e}")
+        return None
+
+def send_to_telegram(file_path):
+    """Envía el archivo generado a un chat de Telegram usando el Bot API o ffsend si es pesado"""
+    token = os.environ.get("TELEGRAM_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    
+    if not token or not chat_id:
+        print("[!] Error: No se encontraron las variables de entorno TELEGRAM_TOKEN o TELEGRAM_CHAT_ID.")
+        return False
         
-    return url, title_folder, lang, mode, start_val, end_val, author_name, manga_uuid, skip_oneshots
+    file_size = os.path.getsize(file_path)
+    # Umbral de 45 MB para evitar el límite de 50MB de Telegram
+    MAX_DIRECT_SIZE = 45 * 1024 * 1024 
+    
+    if file_size >= MAX_DIRECT_SIZE:
+        print(f"[!] Archivo detectado como pesado ({file_size / (1024*1024):.2f} MB).")
+        # Método único de alta privacidad: ffsend (E2EE)
+        link = upload_to_ffsend(file_path)
+        
+        if link:
+            msg = f"📚 *Manga*: {os.path.basename(file_path)}\n\n⚠️ *Bóveda Cifrada Detectada*. Descarga desde este enlace efímero (se borra en 1h o al bajarlo):\n\n🔗 [DESCARGAR AHORA]({link})"
+            url_msg = f"https://api.telegram.org/bot{token}/sendMessage"
+            requests.post(url_msg, data={'chat_id': chat_id, 'text': msg, 'parse_mode': 'Markdown'})
+            print("[OK] Enlace de descarga cifrado enviado a Telegram.")
+            return True
+        else:
+            print("[!] Error: No se pudo generar el enlace cifrado.")
+            return False
+
+    print(f"[*] Enviando directamente a Telegram: {os.path.basename(file_path)} ({file_size / (1024*1024):.2f} MB)...")
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
+    
+    try:
+        with open(file_path, 'rb') as f:
+            files = {'document': f}
+            data = {'chat_id': chat_id, 'caption': f"📚 Manga: {os.path.basename(file_path)}"}
+            response = requests.post(url, data=data, files=files)
+            
+        if response.status_code == 200:
+            print("[OK] Enviado con éxito a Telegram.")
+            return True
+        elif response.status_code == 413:
+            print("[!] Telegram rechazó el archivo por tamaño (413). Reintentando con Bóveda Cifrada...")
+            link = upload_to_ffsend(file_path)
+            if link:
+                msg = f"📚 *Manga*: {os.path.basename(file_path)}\n\n🔗 Descarga aquí (Enlace efímero E2EE):\n{link}"
+                url_msg = f"https://api.telegram.org/bot{token}/sendMessage"
+                requests.post(url_msg, data={'chat_id': chat_id, 'text': msg})
+                return True
+            else:
+                return False
+        else:
+            print(f"[!] Error al enviar (Status {response.status_code}).")
+            return False
+    except Exception as e:
+        print(f"[!] Excepción al contactar con Telegram: {e}")
+        return False
 
 def parse_range(start, end):
     """Convierte un rango de strings en una lista. Soporta decimales (25.5) y alfanuméricos (S1)"""
@@ -388,6 +508,8 @@ def convert_with_kcc(target_path, author="MangaDex"):
     search_pattern = os.path.join(target_path, "**", "*.cbz")
     cbz_files = glob.glob(search_pattern, recursive=True)
     
+    generated_files = [] # Seguimiento de archivos para envío
+    
     if not cbz_files:
         cbz_files = glob.glob(os.path.join(target_path, "*.cbz"))
         if not cbz_files:
@@ -415,65 +537,124 @@ def convert_with_kcc(target_path, author="MangaDex"):
         try:
             print(f"[*] Guardando en: {final_output}")
             result = subprocess.run(cmd)
-            if result.returncode == 0 and DELETE_CBZ_AFTER_CONVERSION:
-                os.remove(cbz_file)
+            if result.returncode == 0:
+                # Localizar el archivo generado (.mobi)
+                filename_no_ext = os.path.splitext(os.path.basename(cbz_file))[0]
+                mobi_file = os.path.join(final_output, filename_no_ext + ".mobi")
+                if os.path.exists(mobi_file):
+                    generated_files.append(mobi_file)
+                
+                if DELETE_CBZ_AFTER_CONVERSION:
+                    os.remove(cbz_file)
         except Exception as e:
             print(f"\n[!] Excepción al ejecutar KCC: {e}")
+            
+    return generated_files
 
 def main():
-    if not os.path.exists(MANGADEX_DL_PATH) or not os.path.exists(KCC_C2E_PATH):
-        print("[ERROR] No se encontraron los ejecutables.")
+    # Verificación de binarios mejorada (Considera PATH)
+    has_md_dl = os.path.exists(MANGADEX_DL_PATH) or shutil.which("mangadex-dl")
+    has_kcc = os.path.exists(KCC_C2E_PATH) or shutil.which("kcc-c2e")
+    
+    if not has_md_dl or not has_kcc:
+        print(f"[ERROR] No se encontraron los binarios necesarios.")
+        print(f"  MangaDex-DL: {'OK' if has_md_dl else 'FALTA'}")
+        print(f"  KCC-C2E: {'OK' if has_kcc else 'FALTA'}")
         return
         
-    url, title, lang, mode, start, end, author, manga_uuid, skip_oneshots = get_user_input()
-    base_path = os.path.join(OUTPUT_FOLDER_MANGA, title)
+    p = resolve_parameters()
+    base_path = os.path.join(OUTPUT_FOLDER_MANGA, p["title"])
     
     # FASE 2: Obtener data de auditoria preventivamente
     aggregate_data = {}
-    if manga_uuid:
-        print(f"\n[*] Consultando estructura de MangaDex para auditoría...")
-        aggregate_data = get_manga_aggregate(manga_uuid, lang)
+    if p["manga_uuid"]:
+        if not p["silent"]: print(f"\n[*] Consultando estructura de MangaDex para auditoría...")
+        aggregate_data = get_manga_aggregate(p["manga_uuid"], p["lang"])
 
-    if mode == 'v':
-        volumes = parse_range(start, end)
+    # --- Lógica de Fallback de Idioma Automático ---
+    # Si no hay capítulos en el idioma actual, probamos los otros en la lista
+    if p["manga_uuid"] and not aggregate_data:
+        fallback_list = ["es-la", "en", "es"]
+        if p["lang"] in fallback_list:
+            fallback_list.remove(p["lang"])
+        
+        for fb_lang in fallback_list:
+            if not p["silent"]: print(f"[*] Idioma '{p['lang']}' no disponible o sin capítulos. Probando fallback: {fb_lang}...")
+            aggregate_data = get_manga_aggregate(p["manga_uuid"], fb_lang)
+            if aggregate_data:
+                p["lang"] = fb_lang
+                break
+
+    if p["mode"] == 'v':
+        volumes = parse_range(p["start"], p["end"])
         
         # --- VALIDACIÓN PREVIA ---
         if aggregate_data:
             invalid_vols = [v for v in volumes if v not in aggregate_data]
             if invalid_vols:
-                print(f"\n[!] ADVERTENCIA: Los siguientes volúmenes no aparecen en MangaDex: {invalid_vols}")
-                available = sorted(list(aggregate_data.keys()), key=lambda x: float(x) if x.replace('.','',1).isdigit() else 999)
-                print(f"    Opciones disponibles: {available}")
-                confirm = input("> ¿Deseas intentar la descarga de todos modos? [s/N]: ").strip().lower()
-                if confirm != 's':
-                    print("[*] Operación cancelada por el usuario.")
-                    return
+                if not p["silent"]:
+                    print(f"\n[!] ADVERTENCIA: Los siguientes volúmenes no aparecen en MangaDex ({p['lang']}): {invalid_vols}")
+                    available = sorted(list(aggregate_data.keys()), key=lambda x: float(x) if x.replace('.','',1).isdigit() else 999)
+                    print(f"    Opciones disponibles: {available}")
+                    # En modo no interactivo, seguimos adelante si el usuario lo pidió por CLI (no hay confirmación)
+                    is_interactive = len(sys.argv) <= 1
+                    if is_interactive:
+                        confirm = input("> ¿Deseas intentar la descarga de todos modos? [s/N]: ").strip().lower()
+                        if confirm != 's':
+                            print("[*] Operación cancelada por el usuario.")
+                            return
 
-        print(f"\n[*] Detectado modo VOLUMEN. Procesando {len(volumes)} tomo(s) individualmente...")
+        if not p["silent"]: print(f"\n[*] Detectado modo VOLUMEN. Procesando {len(volumes)} tomo(s) individualmente...")
         for vol in volumes:
+            # --- SALTAR SI YA EXISTE ---
+            rel_path = os.path.join(p["title"], f"Vol {vol}")
+            expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
+            # El nombre del CBZ suele ser "Vol. X.cbz" -> "Vol. X.mobi"
+            mobi_name = f"Vol. {vol}.mobi"
+            mobi_file = os.path.join(expected_output_dir, mobi_name)
+            
+            if os.path.exists(mobi_file):
+                if not p["silent"]: print(f"[*] {mobi_name} ya existe. Saltando descarga y conversión...")
+                if p["telegram"]:
+                    send_to_telegram(mobi_file)
+                continue
+
             folder = os.path.join(base_path, f"Vol {vol}")
             os.makedirs(folder, exist_ok=True)
-            if download_manga(url, folder, lang, 'v', vol, vol, skip_oneshots):
-                # Limpieza y auditoría inteligente (reemplaza el regex viejo)
-                audit_and_cleanup(folder, aggregate_data, 'v', vol, vol, skip_oneshots)
-                convert_with_kcc(folder, author)
+            if download_manga(p["url"], folder, p["lang"], 'v', vol, vol, p["skip_oneshots"]):
+                audit_and_cleanup(folder, aggregate_data, 'v', vol, vol, p["skip_oneshots"])
+                mobi_list = convert_with_kcc(folder, p["author"])
+                if p["telegram"] and mobi_list:
+                    for m in mobi_list:
+                        send_to_telegram(m)
     else:
-        # Modo Capítulo: Agrupado
-        suffix = f"Cap {start}" + (f"-{end}" if start != end else "")
+        suffix = f"Cap {p['start']}" + (f"-{p['end']}" if p['start'] != p['end'] else "")
         folder = os.path.join(base_path, suffix)
         
-        # --- VALIDACIÓN PREVIA (CAPÍTULOS) ---
-        # (Opcional, pero para capítulos es más complejo por los rangos)
+        # --- SALTAR SI YA EXISTE ---
+        rel_path = os.path.join(p["title"], suffix)
+        expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
+        # En modo capitulo agrupado, KCC genera un MOBI con el nombre de la carpeta
+        mobi_file = os.path.join(expected_output_dir, suffix + ".mobi")
         
-        os.makedirs(folder, exist_ok=True)
-        print(f"\n[*] Detectado modo CAPÍTULO. Agrupando rango {start}-{end}...")
-        if download_manga(url, folder, lang, 'c', start, end, skip_oneshots):
-            audit_and_cleanup(folder, aggregate_data, 'c', start, end, skip_oneshots)
-            convert_with_kcc(folder, author)
+        if os.path.exists(mobi_file):
+            if not p["silent"]: print(f"[*] {suffix}.mobi ya existe. Saltando descarga y conversión...")
+            if p["telegram"]:
+                send_to_telegram(mobi_file)
+        else:
+            os.makedirs(folder, exist_ok=True)
+            if not p["silent"]: print(f"\n[*] Detectado modo CAPÍTULO. Agrupando rango {p['start']}-{p['end']}...")
+            if download_manga(p["url"], folder, p["lang"], 'c', p["start"], p["end"], p["skip_oneshots"]):
+                audit_and_cleanup(folder, aggregate_data, 'c', p["start"], p["end"], p["skip_oneshots"])
+                mobi_list = convert_with_kcc(folder, p["author"])
+                if p["telegram"] and mobi_list:
+                    for m in mobi_list:
+                        send_to_telegram(m)
 
-    print(f"\n=========================================")
-    print(f" Proceso Finalizado. Archivos generados en:\n {OUTPUT_FOLDER_KCC}")
-    print(f"=========================================\n")
+    if not p["silent"]:
+        print(f"\n=========================================")
+        print(f" Proceso Finalizado. Archivos generados en:\n {OUTPUT_FOLDER_KCC}")
+        print(f"=========================================\n")
 
 if __name__ == "__main__":
     main()
