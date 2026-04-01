@@ -1,0 +1,89 @@
+name: Manga to Kindle Delivery
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL de MangaDex (manga o capítulo)'
+        required: true
+      mode:
+        description: 'Modo: v (volumen) o c (capítulo)'
+        required: true
+        default: 'v'
+        type: choice
+        options:
+          - v
+          - c
+      start:
+        description: 'Número inicial'
+        required: true
+        default: '1'
+      end:
+        description: 'Número final (Vacio = Solo el inicial)'
+        required: false
+      lang:
+        description: 'Idioma (es-la, en, es)'
+        required: true
+        default: 'es-la'
+      skip_oneshots:
+        description: 'Omitir capítulos Oneshot'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  convert:
+    name: Download and Convert
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full libpng-dev libjpeg-dev
+
+      - name: Install KindleGen
+        run: |
+          wget https://github.com/D-Andreev/kindlegen-binaries/raw/master/kindlegen_linux_2.6_i386_v2_9.tar.gz
+          tar -xzf kindlegen_linux_2.6_i386_v2_9.tar.gz
+          sudo mv kindlegen /usr/local/bin/
+          kindlegen -locale en || true # Verificar instalación
+
+      - name: Install ffsend
+        run: |
+          wget https://github.com/timvisee/ffsend/releases/download/v0.2.77/ffsend-v0.2.77-linux-x64-static
+          mv ffsend-v0.2.77-linux-x64-static ffsend
+          chmod a+x ffsend
+          sudo mv ffsend /usr/local/bin/
+          ffsend --version
+
+      - name: Install Python Libraries
+        run: |
+          pip install mangadex-downloader KindleComicConverter requests
+
+      - name: Run md2kindle
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          # Construir comando con los inputs de GitHub
+          CMD="python md2kindle.py --url '${{ github.event.inputs.url }}' --mode '${{ github.event.inputs.mode }}' --start '${{ github.event.inputs.start }}' --lang '${{ github.event.inputs.lang }}' --silent --telegram"
+          
+          if [ -n "${{ github.event.inputs.end }}" ]; then
+            CMD="$CMD --end '${{ github.event.inputs.end }}'"
+          fi
+          
+          if [ "${{ github.event.inputs.skip_oneshots }}" = "true" ]; then
+            CMD="$CMD --skip-oneshots"
+          fi
+          
+          echo "Ejecutando: $CMD"
+          eval $CMD

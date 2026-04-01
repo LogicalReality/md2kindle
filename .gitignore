@@ -2,6 +2,7 @@
 memory.md
 MEMORIA.md
 ai_context.md
+copilot-instructions.md
 
 # To-Do Lists
 TO-DO-list.md
@@ -10,4 +11,22 @@ TO-DO-list.md
 .agents/
 .agent/
 _agents/
-.github/
+prompts/
+
+# Python Virtual Environment
+.venv/
+__pycache__/
+*.pyc
+
+# Scripts de lanzamiento local (con tokens)
+run_telegram.ps1
+ffsend.exe
+
+# Carpetas temporales y descargas (Cloud fallback)
+downloads/
+output/
+manga_files/
+manga/
+*.cbz
+*.mobi
+*.epub
