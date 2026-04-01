@@ -8,8 +8,11 @@ Un script de automatización en Python que simplifica la descarga de manga desde
 
 - **Descarga Fluida**: Descarga volúmenes completos o capítulos individuales, uno a uno o en lote (rangos).
 - **Conversión Automática**: Detecta los archivos `.cbz` resultantes y lanza la conversión casi sin intervención manual.
-- **Preconfigurado para Kindle**: Listo para exportar formato MOBI/AZW3 con lectura de derecha a izquierda, escalado avanzado de resolución e unión de páginas dobles rotadas.
-- **Flujo Interactivo**: Un asistente de terminal muy sencillo amigable con el usuario.
+- **🛡️ Entrega E2EE (Zero Trace)**: Los archivos pesados (>45MB) se cifran localmente y se genera un enlace de "un solo uso" (1 descarga / 1 hora) mediante `ffsend`. Privatización total garantizada.
+- **🔗 Integración con Telegram**: Recibe tus mangas convertidos (o sus enlaces cifrados) directamente en tu móvil o app de Telegram para enviarlos a tu e-reader.
+- **☁️ GitHub Actions (Nube)**: ¡No necesitas tu PC! Dispara la descarga y conversión desde la web de GitHub y recibe el resultado en segundos.
+- **⚡ Eficiencia de Procesamiento**: Detección inteligente de archivos `.mobi` existentes para saltar descargas y conversiones innecesarias.
+- **Preconfigurado para Kindle**: Formato MOBI/AZW3 con lectura RTL, escalado avanzado e unión de páginas dobles.
 
 ---
 
@@ -18,9 +21,10 @@ Un script de automatización en Python que simplifica la descarga de manga desde
 Para la estructura general, asegúrate de tener instaladas las siguientes herramientas en tu entorno (Windows):
 
 1. **[Python 3.x](https://www.python.org/downloads/)**: El intérprete necesario para este script.
-2. **[mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases)**: Aplicación usada como motor para la extracción de mangas. (`mangadex-dl.exe`).
-3. **[Kindle Comic Converter (KCC)](https://github.com/ciromattia/kcc/releases)**: Se requiere el ejecutable especializado por línea de comandos, específicamente `kcc_c2e.exe`.
-4. **[Kindle Previewer](https://www.amazon.com/Kindle-Previewer/b?ie=UTF8&node=21381691011)**: KCC requiere el componente `kindlegen` oculto en este programa para empaquetar en formato Amazon (.mobi/.azw3). Al instalarlo, KCC lo autodetectará.
+2. **[mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases)**: Motor para la extracción de mangas. (`mangadex-dl.exe`).
+3. **[Kindle Comic Converter (KCC)](https://github.com/ciromattia/kcc/releases)**: Requiere el ejecutable especializado `kcc_c2e.exe`.
+4. **[Kindle Previewer](https://www.amazon.com/Kindle-Previewer/b?ie=UTF8&node=21381691011)**: KCC lo usa para generar archivos `.mobi`.
+5. **[ffsend](https://github.com/timvisee/ffsend/releases)**: Necesario para la entrega cifrada (E2EE) de archivos pesados.
 
 ---
 
@@ -32,17 +36,20 @@ Por defecto, el script ha sido escrito pensando en un usuario habitual. Antes de
 # ==========================================
 # CONFIGURACIÓN
 # ==========================================
-# Mapeo Absoluto de Ejecutables
-MANGADEX_DL_PATH = r"C:\mangadex-dl\mangadex-dl.exe"
-KCC_C2E_PATH = r"C:\Antigravity\md2kindle\kcc_c2e_9.6.2.exe"
+MANGADEX_DL_PATH = r"C:\\mangadex-dl\\mangadex-dl.exe"
+KCC_C2E_PATH = r"C:\\Antigravity\\md2kindle\\kcc_c2e_9.6.2.exe"
 
 # Entornos de Carpeta de Destinos
-OUTPUT_FOLDER_MANGA = r"C:\Manga"
-OUTPUT_FOLDER_KCC = r"C:\KCC Output"
+OUTPUT_FOLDER_MANGA = r"C:\\Manga"
+OUTPUT_FOLDER_KCC = r"C:\\KCC Output"
 
-# Ajustes Base para KCC (Target: Kindle Paperwhite 12)
-KCC_PROFILE = "KO"  # Activo para dispositivos de >1000px y Serie Signature.
-KCC_FORMAT = "MOBI" # Generacion del archivo DUAL
+# Ajustes Base para Kindle Oasis / Paperwhite 12 Signature
+KCC_PROFILE = "KO"  
+KCC_FORMAT = "MOBI" 
+
+# Integración con Telegram (Variables de Entorno)
+# TELEGRAM_TOKEN="tu_token_aqui"
+# TELEGRAM_CHAT_ID="tu_chat_id_aqui"
 ...
 ```
 
@@ -128,6 +135,20 @@ Al iniciarse te encontrarás con las siguientes preguntas:
 - **Idioma**: Por defecto usa latino (`es-la`). Pulsar enter lo confirmará.
 - **Volumen o Capítulo**: Escribir la letra de la dimensión en que deseas compilar. (`v` o `c`)
 - **Rangos de descarga**: Iniciar y determinar el fin de la descarga (ej: para un solo Volumen contestar `25` en ambas preguntas).
+
+---
+
+## ☁️ Automación en GitHub Actions
+
+En lugar de usar tu computadora localmente, puedes usar el pipeline que hemos integrado.
+
+1. Ve a la pestaña **Actions** en tu repositorio de GitHub.
+2. Selecciona el workflow: **Manga to Kindle Delivery**.
+3. Haz clic en **Run workflow** e introduce la URL de MangaDex.
+4. ¡Sigue el proceso en tiempo real y recibe el archivo en Telegram! 🕊️
+
+> [!TIP]
+> **Privacidad Local vs Cloud**: Tanto en local como en la nube, los archivos pesados (+45MB) se envían cifrados mediante `ffsend`. La llave de descifrado viaja en el enlace como un fragmento (#), por lo que el servidor nunca tiene acceso al contenido de tu manga.
 
 ---
 
