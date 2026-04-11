@@ -30,3 +30,5 @@ manga/
 *.cbz
 *.mobi
 *.epub
+*.bat
+*.ps1
