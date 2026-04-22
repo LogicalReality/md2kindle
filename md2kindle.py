@@ -20,14 +20,11 @@ MANGADEX_DL_PATH_WIN = r"C:\mangadex-dl\mangadex-dl.exe"
 KCC_C2E_PATH_WIN = r"C:\Antigravity\md2kindle\kcc_c2e_9.6.2.exe"
 
 # Búsqueda Dinámica (Nube / Linux)
-if IS_CI:
-    MANGADEX_DL_PATH = shutil.which("mangadex-dl") or "mangadex-dl"
-else:
-    MANGADEX_DL_PATH = (
-        MANGADEX_DL_PATH_WIN
-        if os.path.exists(MANGADEX_DL_PATH_WIN)
-        else (shutil.which("mangadex-dl") or "mangadex-dl")
-    )
+MANGADEX_DL_PATH = (
+    MANGADEX_DL_PATH_WIN
+    if os.path.exists(MANGADEX_DL_PATH_WIN)
+    else (shutil.which("mangadex-dl") or "mangadex-dl")
+)
 KCC_C2E_PATH = (
     KCC_C2E_PATH_WIN
     if os.path.exists(KCC_C2E_PATH_WIN)

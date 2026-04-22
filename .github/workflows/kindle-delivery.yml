@@ -65,17 +65,9 @@ jobs:
           sudo mv ffsend /usr/local/bin/
           ffsend --version
 
-      - name: Install mangadex-dl binary
-        run: |
-          wget https://github.com/mansuf/mangadex-downloader/releases/download/v3.1.4/mangadex-dl_x64_v3.1.4.zip
-          unzip -o mangadex-dl_x64_v3.1.4.zip
-          chmod +x mangadex-dl
-          sudo mv mangadex-dl /usr/local/bin/mangadex-dl
-          mangadex-dl --version
-
       - name: Install Python Libraries
         run: |
-          pip install requests
+          pip install mangadex-downloader requests
           pip install git+https://github.com/ciromattia/kcc.git
 
       - name: Run md2kindle
