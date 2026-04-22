@@ -10,6 +10,14 @@ echo Iniciando el Script de MangaDex a Kindle
 echo ===================================================
 echo.
 
+:: Activar virtual environment si existe
+if exist ".venv\Scripts\activate.bat" (
+    echo [+] Activando virtual environment...
+    call .venv\Scripts\activate.bat
+) else (
+    echo [!] No se encontro .venv, usando Python del sistema
+)
+
 python md2kindle.py
 
 echo.

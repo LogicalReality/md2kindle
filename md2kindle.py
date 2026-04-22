@@ -339,7 +339,9 @@ def format_manga_title(file_path):
     rel_path = os.path.relpath(file_path, OUTPUT_FOLDER_KCC)
     parts = rel_path.split(os.sep)
     manga = parts[0]
-    vol = parts[-1].replace(".mobi", "")
+    filename = parts[-1].replace(".mobi", "")
+    vol_match = re.search(r"(Vol\.?\s*\d+)", filename, re.IGNORECASE)
+    vol = vol_match.group(1) if vol_match else filename
     return manga, vol
 
 
@@ -600,7 +602,14 @@ def download_manga(url, target_path, lang, mode, start_val, end_val, skip_onesho
         range_args = ["--start-chapter", start_val, "--end-chapter", end_val]
 
     # Construcción dinámica del comando para evitar errores de posición (como el de --language)
-    cmd = [MANGADEX_DL_PATH, url, "--save-as", save_as, "--language", lang]
+    cmd = [
+        MANGADEX_DL_PATH,
+        url,
+        "--save-as",
+        save_as,
+        "--language",
+        lang,
+    ]
 
     # Aplicamos el filtro de oneshots de forma dinamica segun el prompt del usuario
     if skip_oneshots:
@@ -611,13 +620,18 @@ def download_manga(url, target_path, lang, mode, start_val, end_val, skip_onesho
     cmd.extend(["--path", target_path])
 
     print(f"\n[*] Ejecutando descarga en: {target_path}")
-    print(f"[*] Comando MANGADEX-DL: {subprocess.list2cmdline(cmd)}\n")
+    print(f"[+] Descargando manga...")
 
     try:
         result = subprocess.run(
-            cmd, stderr=subprocess.DEVNULL if IS_CI else subprocess.PIPE
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
-        return result.returncode == 0
+        if result.returncode == 0:
+            print(f"[OK] Descarga completada")
+            return True
+        else:
+            print(f"[ERROR] Falló la descarga")
+            return False
     except Exception as e:
         print(f"\n[!] Excepción al ejecutar mangadex-dl: {e}")
         return False
@@ -693,6 +707,13 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
                 filename_no_ext = os.path.splitext(os.path.basename(cbz_file))[0]
                 mobi_file = os.path.join(final_output, filename_no_ext + ".mobi")
                 if os.path.exists(mobi_file):
+                    # Renombrar archivo con título completo
+                    manga, vol = format_manga_title(mobi_file)
+                    new_name = f"{manga} {vol}.mobi"
+                    new_path = os.path.join(final_output, new_name)
+                    if new_name != os.path.basename(mobi_file):
+                        os.rename(mobi_file, new_path)
+                        mobi_file = new_path
                     generated_files.append(mobi_file)
 
                 if DELETE_CBZ_AFTER_CONVERSION:
