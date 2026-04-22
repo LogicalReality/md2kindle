@@ -28,6 +28,101 @@ Para la estructura general, asegúrate de tener instaladas las siguientes herram
 
 ---
 
+## 🖥️ Ejecución Local — Guía Paso a Paso
+
+Sigue estos pasos para dejar el entorno listo para funcionar en tu máquina.
+
+### 1. Instalar Python 3.x
+
+Descarga e instala Python desde [python.org](https://www.python.org/downloads/). Durante la instalación, marca la opción **"Add Python to PATH"**.
+
+### 2. Descargar mangadex-dl
+
+1. Ve a [mansuf/mangadex-downloader/releases](https://github.com/mansuf/mangadex-downloader/releases).
+2. Descarga el binario de Windows (`mangadex-dl.exe`).
+3. Crea la carpeta `C:\mangadex-dl\` y coloca el ejecutable ahí.
+
+### 3. Instalar Kindle Previewer (Kindlegen)
+
+1. Descarga **Kindle Previewer** desde [amazon.com/Kindle-Previewer](https://www.amazon.com/Kindle-Previewer/b?ie=UTF8&node=21381691011).
+2. Instálalo y ábrelo **al menos una vez** para que registre sus binaries internamente.
+3. KCC lo detectará automáticamente.
+
+> [!NOTE]
+> Sin Kindle Previewer, KCC fallará en el paso final de conversión con un error sobre `kindlegen`.
+
+### 4. [Opcional] Descargar ffsend para Entregas Cifradas
+
+Si planeas usar la función de Telegram con archivos pesados (+45MB), necesitas `ffsend`:
+
+1. Ve a [timvisee/ffsend/releases](https://github.com/timvisee/ffsend/releases).
+2. Descarga el binario de Windows.
+3. Colócalo en la carpeta del proyecto o agrégalo al PATH del sistema.
+
+> [!TIP]
+> Si no usas Telegram o solo envías archivos pequeños, puedes omitir este paso.
+
+### 5. Clonar o Descargar el Repositorio
+
+```bash
+git clone https://github.com/tu-usuario/md2kindle.git
+cd md2kindle
+```
+
+### 6. Instalar Dependencias de Python
+
+```bash
+pip install requests
+```
+
+### 7. Configurar Rutas en md2kindle.py
+
+Abre `md2kindle.py` y verifica (o ajusta) las rutas en la sección `CONFIGURACIÓN`:
+
+```python
+MANGADEX_DL_PATH_WIN = r"C:\mangadex-dl\mangadex-dl.exe"
+KCC_C2E_PATH_WIN = r"C:\Antigravity\md2kindle\kcc_c2e_9.6.2.exe"
+```
+
+Si moviste el proyecto a otra ubicación, actualiza `KCC_C2E_PATH_WIN` correspondientemente.
+
+### 8. [Opcional] Configurar Variables de Entorno para Telegram
+
+El script detecta automáticamente si las variables `TELEGRAM_TOKEN` y `TELEGRAM_CHAT_ID` están disponibles. Tienes tres formas de configurarlas:
+
+#### Opción A: Archivo `.env` (Recomendado para desarrollo local)
+
+1. Crea un archivo `.env` en la raíz del proyecto:
+
+```
+TELEGRAM_TOKEN=tu_token_aqui
+TELEGRAM_CHAT_ID=tu_chat_id_aqui
+```
+
+2. Para cargarlas automáticamente, puedes usar un wrapper o configurar tu IDE/terminal.
+
+> [!WARNING]
+> **Nunca subas el archivo `.env` a GitHub.** Ya está ignorado por `.gitignore`,
+> pero verifica que no esté tracked antes de hacer commit.
+
+#### Opción B: Variables del Sistema (Windows CMD)
+
+```cmd
+set TELEGRAM_TOKEN=tu_token_aqui
+set TELEGRAM_CHAT_ID=tu_chat_id_aqui
+python md2kindle.py --url "..." --telegram
+```
+
+#### Opción C: PowerShell
+
+```powershell
+$env:TELEGRAM_TOKEN="tu_token_aqui"
+$env:TELEGRAM_CHAT_ID="tu_chat_id_aqui"
+python md2kindle.py --url "..." --telegram
+```
+
+---
+
 ## ⚙️ Configuración y Setup
 
 Por defecto, el script ha sido escrito pensando en un usuario habitual. Antes de la primera ejecución, es indispensable abrir `md2kindle.py` en cualquier editor de texto (Ej. Visual Studio Code / Bloc de Notas) para mapear correctamente las herramientas instaladas en tu disco duro:
@@ -149,6 +244,71 @@ En lugar de usar tu computadora localmente, puedes usar el pipeline que hemos in
 
 > [!TIP]
 > **Privacidad Local vs Cloud**: Tanto en local como en la nube, los archivos pesados (+45MB) se envían cifrados mediante `ffsend`. La llave de descifrado viaja en el enlace como un fragmento (#), por lo que el servidor nunca tiene acceso al contenido de tu manga.
+
+---
+
+## ☁️ Automatización con GitHub Actions
+
+Si prefieres no mantener Python instalado en tu máquina, puedes usar el pipeline de GitHub Actions.
+
+### 1. Subir el Repositorio a GitHub
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/tu-usuario/md2kindle.git
+git push -u origin main
+```
+
+### 2. Configurar Secrets en GitHub
+
+Para que el bot de Telegram funcione, necesitas agregar tus credenciales:
+
+1. En tu repositorio de GitHub, ve a **Settings → Secrets and variables → Actions**.
+2. Crea dos secrets:
+
+| Secret | Valor |
+|--------|-------|
+| `TELEGRAM_TOKEN` | Token de tu bot de Telegram |
+| `TELEGRAM_CHAT_ID` | ID del chat donde recibirás los archivos |
+
+#### ¿Cómo obtener los tokens de Telegram?
+
+1. **TELEGRAM_TOKEN**:
+   - Habla con [@BotFather](https://t.me/BotFather) en Telegram.
+   - Envía `/newbot` y sigue las instrucciones.
+   - Al finalizar, BotFather te dará un token como: `123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ`
+   - Ese es tu `TELEGRAM_TOKEN`.
+
+2. **TELEGRAM_CHAT_ID**:
+   - Agrega tu bot a tu grupo o chat.
+   - Habla con [@userinfobot](https://t.me/userinfobot) o [@getidsbot](https://t.me/getidsbot).
+   - El bot te responderá con tu **Chat ID** (ej: `123456789`).
+   - También puedes usar [@MyChatInfoBot](https://t.me/MyChatInfoBot) si quieres el ID de un grupo.
+
+> [!NOTE]
+> Si eres el único usuario, el Chat ID suele ser tu **User ID** personal (número largo y negativo).
+
+### 3. Ejecutar el Workflow
+
+1. Ve a la pestaña **Actions** en tu repositorio.
+2. Selecciona el workflow: **Manga to Kindle Delivery**.
+3. Haz clic en **Run workflow** e ingresa:
+   - **URL de MangaDex** (ej: `https://mangadex.org/title/8015...`)
+   - **Modo**: `v` (volumen) o `c` (capítulo)
+   - **Volumen/Capítulo inicial y final**
+   - **Idioma**: `es-la`, `en`, `es`, etc.
+   - **Omitir Oneshots**: `true` o `false`
+4. Haz clic en **Run** y observa el proceso en tiempo real.
+
+### 4. Recibir el Archivo
+
+- Si el archivo es menor a 45MB, arrive directamente a Telegram.
+- Si es mayor, recibirás un **enlace efímero E2EE** de ffsend (1 descarga / 1 hora).
+
+> [!TIP]
+> **Privacidad**: La llave de descifrado viaja en el fragmento del URL (`#`), por lo que ni siquiera el servidor de ffsend puede ver tu manga.
 
 ---
 

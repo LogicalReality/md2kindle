@@ -22,6 +22,9 @@ __pycache__/
 run_telegram.ps1
 ffsend.exe
 
+# Variables de entorno local
+.env
+
 # Carpetas temporales y descargas (Cloud fallback)
 downloads/
 output/
@@ -30,5 +33,4 @@ manga/
 *.cbz
 *.mobi
 *.epub
-*.bat
 *.ps1
