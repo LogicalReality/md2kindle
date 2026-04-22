@@ -67,9 +67,10 @@ jobs:
 
       - name: Install mangadex-dl binary
         run: |
-          wget https://github.com/mansuf/mangadex-downloader/releases/download/1.1.2/mangadex-dl.exe
-          chmod +x mangadex-dl.exe
-          sudo mv mangadex-dl.exe /usr/local/bin/mangadex-dl
+          wget https://github.com/mansuf/mangadex-downloader/releases/download/v3.1.4/mangadex-dl_x64_v3.1.4.zip
+          unzip -o mangadex-dl_x64_v3.1.4.zip
+          chmod +x mangadex-dl
+          sudo mv mangadex-dl /usr/local/bin/mangadex-dl
           mangadex-dl --version
 
       - name: Install Python Libraries
