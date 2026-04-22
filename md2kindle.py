@@ -10,6 +10,8 @@ import sys
 import shutil
 import requests
 
+IS_CI = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+
 # ==========================================
 # CONFIGURACIÓN
 # ==========================================
@@ -600,7 +602,9 @@ def download_manga(url, target_path, lang, mode, start_val, end_val, skip_onesho
     print(f"[*] Comando MANGADEX-DL: {subprocess.list2cmdline(cmd)}\n")
 
     try:
-        result = subprocess.run(cmd)
+        result = subprocess.run(
+            cmd, stderr=subprocess.DEVNULL if IS_CI else subprocess.PIPE
+        )
         return result.returncode == 0
     except Exception as e:
         print(f"\n[!] Excepción al ejecutar mangadex-dl: {e}")
@@ -648,7 +652,9 @@ def convert_with_kcc(target_path, author="MangaDex"):
 
         try:
             print(f"[*] Guardando en: {final_output}")
-            result = subprocess.run(cmd)
+            result = subprocess.run(
+                cmd, stderr=subprocess.DEVNULL if IS_CI else subprocess.PIPE
+            )
             if result.returncode == 0:
                 # Localizar el archivo generado (.mobi)
                 filename_no_ext = os.path.splitext(os.path.basename(cbz_file))[0]
