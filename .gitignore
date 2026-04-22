@@ -8,7 +8,7 @@ copilot-instructions.md
 TO-DO-list.md
 
 # Test files
-test_ci_detection.py
+tests/
 .agents/
 .agent/
 _agents/

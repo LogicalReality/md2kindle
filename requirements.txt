@@ -1,0 +1,2 @@
+requests
+mangadex-downloader>=1.0.0
