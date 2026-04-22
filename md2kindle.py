@@ -590,6 +590,10 @@ def download_manga(url, target_path, lang, mode, start_val, end_val, skip_onesho
     # Construcción dinámica del comando para evitar errores de posición (como el de --language)
     cmd = [MANGADEX_DL_PATH, url, "--save-as", save_as, "--language", lang]
 
+    # CI usa log limpo sin tqdm bars para evitar output contaminado
+    if IS_CI:
+        cmd.append("--no-progress-bar")
+
     # Aplicamos el filtro de oneshots de forma dinamica segun el prompt del usuario
     if skip_oneshots:
         cmd.append("--no-oneshot-chapter")
