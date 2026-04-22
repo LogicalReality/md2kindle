@@ -335,6 +335,14 @@ def resolve_parameters():
     }
 
 
+def format_manga_title(file_path):
+    rel_path = os.path.relpath(file_path, OUTPUT_FOLDER_KCC)
+    parts = rel_path.split(os.sep)
+    manga = parts[0]
+    vol = parts[-1].replace(".mobi", "")
+    return manga, vol
+
+
 def upload_to_ffsend(file_path):
     """Sube un archivo a ffsend (Firefox Send) - Encriptación de Extremo a Extremo"""
     # Verificamos si ffsend está instalado en el sistema
@@ -399,7 +407,9 @@ def send_to_telegram(file_path):
         link = upload_to_ffsend(file_path)
 
         if link:
-            msg = f"📚 *Manga*: {os.path.basename(file_path)}\n\n⚠️ *Bóveda Cifrada Detectada*. Descarga desde este enlace efímero (se borra en 1h o al bajarlo):\n\n🔗 [DESCARGAR AHORA]({link})"
+            manga, vol = format_manga_title(file_path)
+            size_str = f"{file_size / (1024 * 1024):.2f} MB"
+            msg = f"📖 **{manga}** - {vol}\n\n🔒 Enlace seguro (archivo de {size_str}). Expira en 12h:\n\n🔗 [DESCARGAR AHORA]({link})"
             url_msg = f"https://api.telegram.org/bot{token}/sendMessage"
             requests.post(
                 url_msg,
@@ -417,11 +427,12 @@ def send_to_telegram(file_path):
     url = f"https://api.telegram.org/bot{token}/sendDocument"
 
     try:
+        manga, vol = format_manga_title(file_path)
         with open(file_path, "rb") as f:
             files = {"document": f}
             data = {
                 "chat_id": chat_id,
-                "caption": f"📚 Manga: {os.path.basename(file_path)}",
+                "caption": f"📖 **{manga}** - {vol}",
             }
             response = requests.post(url, data=data, files=files)
 
@@ -434,7 +445,8 @@ def send_to_telegram(file_path):
             )
             link = upload_to_ffsend(file_path)
             if link:
-                msg = f"📚 *Manga*: {os.path.basename(file_path)}\n\n🔗 Descarga aquí (Enlace efímero E2EE):\n{link}"
+                manga, vol = format_manga_title(file_path)
+                msg = f"📖 **{manga}** - {vol}\n\n🔒 Enlace seguro:\n{link}"
                 url_msg = f"https://api.telegram.org/bot{token}/sendMessage"
                 requests.post(url_msg, data={"chat_id": chat_id, "text": msg})
                 return True
@@ -611,7 +623,7 @@ def download_manga(url, target_path, lang, mode, start_val, end_val, skip_onesho
         return False
 
 
-def convert_with_kcc(target_path, author="MangaDex"):
+def convert_with_kcc(target_path, author="MangaDex", title=None):
     """Convierte archivos CBZ en Kindle-friendly formats reflejando la estructura original"""
     search_pattern = os.path.join(target_path, "**", "*.cbz")
     cbz_files = glob.glob(search_pattern, recursive=True)
@@ -631,9 +643,28 @@ def convert_with_kcc(target_path, author="MangaDex"):
     except Exception as e:
         print(f"[!] Error al crear carpeta de salida en KCC: {e}")
         final_output = OUTPUT_FOLDER_KCC
+        rel_path = target_path
+
+    # Extraer nombre de manga y volumen del path para metadatos
+    manga_title = title
+    if not manga_title:
+        try:
+            path_parts = rel_path.split(os.sep)
+            manga_title = path_parts[0]
+        except Exception:
+            manga_title = "Manga"
 
     for cbz_file in cbz_files:
         print(f"\n[+] Procesando con KCC: {os.path.basename(cbz_file)}")
+
+        # Extraer volumen del nombre del CBZ (ej: "Vol. 39.cbz" -> "Vol. 39")
+        cbz_basename = os.path.splitext(os.path.basename(cbz_file))[0]
+        vol_match = re.search(r"(Vol\.?\s*\d+)", cbz_basename, re.IGNORECASE)
+        vol_str = vol_match.group(1) if vol_match else cbz_basename
+
+        # Formatear titulo completo para metadatos del MOBI
+        mobi_title = f"{manga_title} {vol_str}"
+
         cmd = (
             [
                 KCC_C2E_PATH,
@@ -645,6 +676,8 @@ def convert_with_kcc(target_path, author="MangaDex"):
                 final_output,
                 "-a",
                 author,  # Inyección del autor real
+                "-t",
+                mobi_title,  # Inyección del título completo
             ]
             + KCC_CUSTOM_ARGS
             + [cbz_file]
@@ -769,7 +802,7 @@ def main():
                 audit_and_cleanup(
                     folder, aggregate_data, "v", vol, vol, p["skip_oneshots"]
                 )
-                mobi_list = convert_with_kcc(folder, p["author"])
+                mobi_list = convert_with_kcc(folder, p["author"], p["title"])
                 if p["telegram"] and mobi_list:
                     for m in mobi_list:
                         send_to_telegram(m)
@@ -813,7 +846,7 @@ def main():
                     p["end"],
                     p["skip_oneshots"],
                 )
-                mobi_list = convert_with_kcc(folder, p["author"])
+                mobi_list = convert_with_kcc(folder, p["author"], p["title"])
                 if p["telegram"] and mobi_list:
                     for m in mobi_list:
                         send_to_telegram(m)
