@@ -352,15 +352,15 @@ def upload_to_ffsend(file_path):
     print(f"[*] Subiendo a {url_host} (Bóveda Cifrada E2EE)...")
 
     try:
-        # Comando: ffsend upload <file> --downloads 1 --expiry 1h --host <host> --quiet --no-interact
+        # Comando: ffsend upload <file> --downloads 5 --expiry 12h --host <host> --quiet --no-interact
         cmd = [
             ffsend_bin,
             "upload",
             file_path,
             "--downloads",
-            "1",
+            "5",
             "--expiry",
-            "1h",
+            "12h",
             "--host",
             url_host,
             "--quiet",
