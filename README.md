@@ -312,6 +312,50 @@ Para que el bot de Telegram funcione, necesitas agregar tus credenciales:
 
 ---
 
+## 🤖 Bot de Telegram (Control por Comandos)
+
+También puedes controlar las descargas directamente desde Telegram, sin necesidad de ir a GitHub.
+
+### Configuración (Google Apps Script)
+
+1. Ve a [script.google.com](https://script.google.com) y crea un nuevo proyecto
+2. Copia el contenido de `telegram-bot.gs` al proyecto
+3. Configura las **Propiedades del script** (Archivo → Propiedades → Propiedades del proyecto):
+   - `TELEGRAM_TOKEN` = tu token del bot
+   - `TELEGRAM_CHAT_ID` = tu chat ID
+   - `GITHUB_TOKEN` = Personal Access Token con scope `workflow`
+   - `GITHUB_REPO` = `LogicalReality/md2kindle`
+   - `GITHUB_WORKFLOW_ID` = `kindle-delivery.yml`
+4. Despliega como **App Web** (Ejecutar como: Yo, Acceso:Cualquier persona)
+5. Configura un **Trigger** cada 30 segundos
+
+### Comandos Disponibles
+
+| Comando | Descripción |
+|---------|-------------|
+| `/descargar <url>` | Inicia una descarga interactiva |
+| `/help` | Muestra ayuda |
+| `/status` | Estado del bot |
+| `/list` | Últimas 5 descargas |
+| `/cancel` | Cancelar (no soportado por GitHub Actions) |
+
+### Flujo de Descarga Interactiva
+
+```
+1. Envías: /descargar https://mangadex.org/title/abc-123
+2. Bot valida la URL
+3. Responde问你:
+   - Modo: v (volumen) / c (capítulo)
+   - Número inicial
+   - Número final
+   - Idioma (es-la / en / es)
+   - Omitir oneshots (s/n)
+4. Bot dispara GitHub Actions
+5. Recibes el archivo .mobi cuando termina
+```
+
+---
+
 ## 💡 Notas Adicionales y Resolución de Problemas
 
 - **Almacenamiento Redundante**: Si te enfrentas a problemas de disco duro, y no deseas mantener la copia ".cbz", puedes editar la variable `DELETE_CBZ_AFTER_CONVERSION` igualándola a `True` para auto-eliminar los brutos.
