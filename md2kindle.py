@@ -724,6 +724,81 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
     return generated_files
 
 
+def process_volume_flow(p, vol, base_path, aggregate_data):
+    # --- SALTAR SI YA EXISTE ---
+    rel_path = os.path.join(p["title"], f"Vol {vol}")
+    expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
+    # El nombre del CBZ suele ser "Vol. X.cbz" -> "Vol. X.mobi"
+    mobi_name = f"Vol. {vol}.mobi"
+    mobi_file = os.path.join(expected_output_dir, mobi_name)
+
+    if os.path.exists(mobi_file):
+        if not p["silent"]:
+            print(f"[*] {mobi_name} ya existe. Saltando descarga y conversión...")
+        if p["telegram"]:
+            send_to_telegram(mobi_file)
+        return
+
+    folder = os.path.join(base_path, f"Vol {vol}")
+    os.makedirs(folder, exist_ok=True)
+    if download_manga(
+        p["url"], folder, p["lang"], "v", vol, vol, p["skip_oneshots"]
+    ):
+        audit_and_cleanup(
+            folder, aggregate_data, "v", vol, vol, p["skip_oneshots"]
+        )
+        mobi_list = convert_with_kcc(folder, p["author"], p["title"])
+        if p["telegram"] and mobi_list:
+            for m in mobi_list:
+                send_to_telegram(m)
+
+
+def process_chapter_flow(p, base_path, aggregate_data):
+    suffix = f"Cap {p['start']}" + (
+        f"-{p['end']}" if p["start"] != p["end"] else ""
+    )
+    folder = os.path.join(base_path, suffix)
+
+    # --- SALTAR SI YA EXISTE ---
+    rel_path = os.path.join(p["title"], suffix)
+    expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
+    # En modo capitulo agrupado, KCC genera un MOBI con el nombre de la carpeta
+    mobi_file = os.path.join(expected_output_dir, suffix + ".mobi")
+
+    if os.path.exists(mobi_file):
+        if not p["silent"]:
+            print(f"[*] {suffix}.mobi ya existe. Saltando descarga y conversión...")
+        if p["telegram"]:
+            send_to_telegram(mobi_file)
+    else:
+        os.makedirs(folder, exist_ok=True)
+        if not p["silent"]:
+            print(
+                f"\n[*] Detectado modo CAPÍTULO. Agrupando rango {p['start']}-{p['end']}..."
+            )
+        if download_manga(
+            p["url"],
+            folder,
+            p["lang"],
+            "c",
+            p["start"],
+            p["end"],
+            p["skip_oneshots"],
+        ):
+            audit_and_cleanup(
+                folder,
+                aggregate_data,
+                "c",
+                p["start"],
+                p["end"],
+                p["skip_oneshots"],
+            )
+            mobi_list = convert_with_kcc(folder, p["author"], p["title"])
+            if p["telegram"] and mobi_list:
+                for m in mobi_list:
+                    send_to_telegram(m)
+
+
 def main():
     # Verificación de binarios mejorada (Considera PATH)
     has_md_dl = os.path.exists(MANGADEX_DL_PATH) or shutil.which("mangadex-dl")
@@ -746,7 +821,6 @@ def main():
         aggregate_data = get_manga_aggregate(p["manga_uuid"], p["lang"])
 
     # --- Lógica de Fallback de Idioma Automático ---
-    # Si no hay capítulos en el idioma actual, probamos los otros en la lista
     if p["manga_uuid"] and not aggregate_data:
         fallback_list = ["es-la", "en", "es"]
         if p["lang"] in fallback_list:
@@ -780,7 +854,6 @@ def main():
                         ),
                     )
                     print(f"    Opciones disponibles: {available}")
-                    # En modo no interactivo, seguimos adelante si el usuario lo pidió por CLI (no hay confirmación)
                     is_interactive = len(sys.argv) <= 1
                     if is_interactive:
                         confirm = (
@@ -799,78 +872,9 @@ def main():
                 f"\n[*] Detectado modo VOLUMEN. Procesando {len(volumes)} tomo(s) individualmente..."
             )
         for vol in volumes:
-            # --- SALTAR SI YA EXISTE ---
-            rel_path = os.path.join(p["title"], f"Vol {vol}")
-            expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
-            # El nombre del CBZ suele ser "Vol. X.cbz" -> "Vol. X.mobi"
-            mobi_name = f"Vol. {vol}.mobi"
-            mobi_file = os.path.join(expected_output_dir, mobi_name)
-
-            if os.path.exists(mobi_file):
-                if not p["silent"]:
-                    print(
-                        f"[*] {mobi_name} ya existe. Saltando descarga y conversión..."
-                    )
-                if p["telegram"]:
-                    send_to_telegram(mobi_file)
-                continue
-
-            folder = os.path.join(base_path, f"Vol {vol}")
-            os.makedirs(folder, exist_ok=True)
-            if download_manga(
-                p["url"], folder, p["lang"], "v", vol, vol, p["skip_oneshots"]
-            ):
-                audit_and_cleanup(
-                    folder, aggregate_data, "v", vol, vol, p["skip_oneshots"]
-                )
-                mobi_list = convert_with_kcc(folder, p["author"], p["title"])
-                if p["telegram"] and mobi_list:
-                    for m in mobi_list:
-                        send_to_telegram(m)
+            process_volume_flow(p, vol, base_path, aggregate_data)
     else:
-        suffix = f"Cap {p['start']}" + (
-            f"-{p['end']}" if p["start"] != p["end"] else ""
-        )
-        folder = os.path.join(base_path, suffix)
-
-        # --- SALTAR SI YA EXISTE ---
-        rel_path = os.path.join(p["title"], suffix)
-        expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
-        # En modo capitulo agrupado, KCC genera un MOBI con el nombre de la carpeta
-        mobi_file = os.path.join(expected_output_dir, suffix + ".mobi")
-
-        if os.path.exists(mobi_file):
-            if not p["silent"]:
-                print(f"[*] {suffix}.mobi ya existe. Saltando descarga y conversión...")
-            if p["telegram"]:
-                send_to_telegram(mobi_file)
-        else:
-            os.makedirs(folder, exist_ok=True)
-            if not p["silent"]:
-                print(
-                    f"\n[*] Detectado modo CAPÍTULO. Agrupando rango {p['start']}-{p['end']}..."
-                )
-            if download_manga(
-                p["url"],
-                folder,
-                p["lang"],
-                "c",
-                p["start"],
-                p["end"],
-                p["skip_oneshots"],
-            ):
-                audit_and_cleanup(
-                    folder,
-                    aggregate_data,
-                    "c",
-                    p["start"],
-                    p["end"],
-                    p["skip_oneshots"],
-                )
-                mobi_list = convert_with_kcc(folder, p["author"], p["title"])
-                if p["telegram"] and mobi_list:
-                    for m in mobi_list:
-                        send_to_telegram(m)
+        process_chapter_flow(p, base_path, aggregate_data)
 
     if not p["silent"]:
         print(f"\n=========================================")
