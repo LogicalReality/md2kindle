@@ -13,4 +13,4 @@
 - [ ] TO-DO: Extraer main() en funciones testables (download_flow, convert_flow, telegram_flow)
 - [x] TO-DO: Modificar mensaje del bot de Telegram para mostrar el nombre real del manga (actualmente solo dice "Manga") (Completado: 2026-04-22)
 - [x] TO-DO: Mostrar el nombre del manga en los archivos .mobi generados (actualmente no incluye el título en los metadatos del archivo) (Completado: 2026-04-22)
-- [x] TO-DO: Permitir enviar comandos desde Telegram para triggerear GitHub Actions (ej: /descargar manga_url) (Completado: 2026-04-23)
+- [ ] TO-DO: Permitir enviar comandos desde Telegram para triggerear GitHub Actions (ej: /descargar manga_url) (Completado: 2026-04-23)
