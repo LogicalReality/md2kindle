@@ -12,6 +12,7 @@ prompts/
 .venv/
 __pycache__/
 *.pyc
+*.pytest_cache/
 
 # Scripts de lanzamiento local (con tokens)
 run_telegram.ps1
