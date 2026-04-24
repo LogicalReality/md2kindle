@@ -20,13 +20,13 @@ KCC_LOCAL = os.path.join(SCRIPT_DIR, "kcc_c2e_9.6.2.exe")
 # 2. Fallbacks (PATH del sistema)
 MANGADEX_DL_PATH = (
     MANGADEX_LOCAL
-    if os.path.exists(MANGADEX_LOCAL)
+    if os.path.exists(MANGADEX_LOCAL) and os.name == "nt"
     else (shutil.which("mangadex-dl") or "mangadex-dl")
 )
 
 KCC_C2E_PATH = (
     KCC_LOCAL
-    if os.path.exists(KCC_LOCAL)
+    if os.path.exists(KCC_LOCAL) and os.name == "nt"
     else (shutil.which("kcc-c2e") or "kcc-c2e")
 )
 

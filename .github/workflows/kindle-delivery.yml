@@ -43,7 +43,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.14'
+          python-version: '3.13'
 
       - name: Install System Dependencies
         run: |
@@ -67,7 +67,9 @@ jobs:
 
       - name: Install Python Libraries
         run: |
-          pip install mangadex-downloader requests
+          python -m pip install --upgrade pip
+          pip install --upgrade requests urllib3
+          pip install -r requirements.txt
           pip install git+https://github.com/ciromattia/kcc.git
 
       - name: Run md2kindle
