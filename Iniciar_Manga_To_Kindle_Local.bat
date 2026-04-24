@@ -6,7 +6,7 @@ color 0A
 cd /d "%~dp0"
 
 echo ===================================================
-echo Iniciando el Script de MangaDex a Kindle
+echo  MangaDex to Kindle Converter  ^|  md2kindle v1.0
 echo ===================================================
 echo.
 
@@ -18,7 +18,20 @@ if exist ".venv\Scripts\activate.bat" (
     echo [!] No se encontro .venv, usando Python del sistema
 )
 
-python md2kindle.py
+:: Verificar que el paquete esta disponible antes de lanzar
+.venv\Scripts\python.exe -c "import md2kindle" 2>nul
+if errorlevel 1 (
+    echo.
+    echo [!] ERROR: El paquete md2kindle no se encontro en el entorno.
+    echo     Asegurate de que .venv exista y tenga las dependencias instaladas.
+    echo     Ejecuta: pip install -r requirements.txt
+    echo.
+    pause >nul
+    exit /b 1
+)
+
+echo.
+.venv\Scripts\python.exe md2kindle.py
 
 echo.
 echo Presiona cualquier tecla para salir...
