@@ -72,19 +72,38 @@ cd md2kindle
 ### 6. Instalar Dependencias de Python
 
 ```bash
-pip install requests
+pip install -r requirements.txt
 ```
 
-### 7. Configurar Rutas en md2kindle.py
+Esto instalará `requests` y `mangadex-downloader` (la librería Python oficial).
 
-Abre `md2kindle.py` y verifica (o ajusta) las rutas en la sección `CONFIGURACIÓN`:
+> [!NOTE]
+> Si prefieres el binario standalone (`mangadex-dl.exe`), descárgalo desde
+> [mansuf/mangadex-downloader/releases](https://github.com/mansuf/mangadex-downloader/releases)
+> y colócalo dentro de `mangadex-dl/` en la raíz del proyecto. El script lo detectará automáticamente.
 
-```python
-MANGADEX_DL_PATH_WIN = r"C:\mangadex-dl\mangadex-dl.exe"
-KCC_C2E_PATH_WIN = r"C:\Antigravity\md2kindle\kcc_c2e_9.6.2.exe"
+### 7. Colocar los Binarios (Detección Automática)
+
+El script detecta las herramientas en **cascada**, sin necesidad de editar código:
+
+| Prioridad | Ubicación buscada |
+| :--- | :--- |
+| **1ª** | Raíz del proyecto (`./mangadex-dl/mangadex-dl.exe`, `./kcc_c2e_*.exe`) |
+| **2ª** | PATH del sistema (`mangadex-dl`, `kcc-c2e` instalados globalmente) |
+
+**Modo Portable** — Estructura recomendada si usas los binarios directamente:
+
+```
+md2kindle/
+├── mangadex-dl/
+│   └── mangadex-dl.exe
+├── kcc_c2e_9.6.2.exe
+└── md2kindle.py
 ```
 
-Si moviste el proyecto a otra ubicación, actualiza `KCC_C2E_PATH_WIN` correspondientemente.
+> [!TIP]
+> Si instalaste `mangadex-downloader` vía pip (paso anterior), no necesitas el binario.
+> El script lo encontrará en el PATH automáticamente.
 
 ### 8. [Opcional] Configurar Variables de Entorno para Telegram
 
@@ -125,27 +144,26 @@ python md2kindle.py --url "..." --telegram
 
 ## ⚙️ Configuración y Setup
 
-Por defecto, el script ha sido escrito pensando en un usuario habitual. Antes de la primera ejecución, es indispensable abrir `md2kindle.py` en cualquier editor de texto (Ej. Visual Studio Code / Bloc de Notas) para mapear correctamente las herramientas instaladas en tu disco duro:
+Toda la configuración central vive en `md2kindle/config.py`. Los valores por defecto funcionan sin modificación en la mayoría de los casos:
 
 ```python
 # ==========================================
-# CONFIGURACIÓN
+# CONFIGURACIÓN  (md2kindle/config.py)
 # ==========================================
-MANGADEX_DL_PATH = r"C:\\mangadex-dl\\mangadex-dl.exe"
-KCC_C2E_PATH = r"C:\\Antigravity\\md2kindle\\kcc_c2e_9.6.2.exe"
 
-# Entornos de Carpeta de Destinos
-OUTPUT_FOLDER_MANGA = r"C:\\Manga"
-OUTPUT_FOLDER_KCC = r"C:\\KCC Output"
+# Carpetas de destino — Relativas al proyecto
+OUTPUT_FOLDER_MANGA = "./downloads"   # CBZ descargados
+OUTPUT_FOLDER_KCC   = "./output"      # MOBI/AZW3 convertidos
 
-# Ajustes Base para Kindle Oasis / Paperwhite 12 Signature
-KCC_PROFILE = "KO"  
-KCC_FORMAT = "MOBI" 
+# Ajustes de KCC
+KCC_PROFILE     = "KO"               # KO = Kindle Oasis / Paperwhite 12
+KCC_FORMAT      = "MOBI"             # Formato Dual MOBI/AZW3
+KCC_CUSTOM_ARGS = ["-m", "-r", "1", "-u"]
 
-# Integración con Telegram (Variables de Entorno)
-# TELEGRAM_TOKEN="tu_token_aqui"
-# TELEGRAM_CHAT_ID="tu_chat_id_aqui"
-...
+# Comportamiento general
+DELETE_CBZ_AFTER_CONVERSION   = False
+DEFAULT_LANGUAGE               = "es-la"
+SKIP_ONESHOTS_ON_VOLUME_MODE   = True
 ```
 
 ## 🛠️ Guía de Configuración Avanzada
@@ -216,12 +234,7 @@ Abre la terminal de comandos (CMD o Powershell), navega mediante tu ruta a la ca
 python md2kindle.py
 ```
 
-### Método Autoejecutable de Windows (`.bat`)
-
-Habiendo descargado o clonado la carpeta en Windows, bastará con **Hacer doble click** en el archivo adjunto:
-`Iniciar_Manga_To_Kindle.bat`
-
-### Rellenando el Asistente
+### Rellenando el Asistente (Modo Interactivo)
 
 Al iniciarse te encontrarás con las siguientes preguntas:
 
@@ -231,21 +244,41 @@ Al iniciarse te encontrarás con las siguientes preguntas:
 - **Volumen o Capítulo**: Escribir la letra de la dimensión en que deseas compilar. (`v` o `c`)
 - **Rangos de descarga**: Iniciar y determinar el fin de la descarga (ej: para un solo Volumen contestar `25` en ambas preguntas).
 
+### Método con Argumentos CLI (Avanzado)
+
+Puedes pasar todos los parámetros directamente sin pasar por el asistente interactivo:
+
+```bash
+python md2kindle.py <URL> [opciones]
+```
+
+| Argumento | Descripción | Ejemplo |
+| :--- | :--- | :--- |
+| `url` | URL del manga en MangaDex | `https://mangadex.org/title/8015...` |
+| `--title` | Nombre de la carpeta de salida | `--title "Berserk"` |
+| `--lang` | Idioma de descarga | `--lang es-la` |
+| `--mode` | `v` (volumen) o `c` (capítulo) | `--mode v` |
+| `--start` | Número inicial | `--start 1` |
+| `--end` | Número final (por defecto = `--start`) | `--end 5` |
+| `--skip-oneshots` | Omitir capítulos Oneshot | `--skip-oneshots` |
+| `--telegram` | Enviar resultado a Telegram | `--telegram` |
+| `--silent` | Reducir verbosidad de logs | `--silent` |
+
+**Ejemplo completo** — Descargar los volúmenes 1 al 5 en español y enviar a Telegram:
+
+```bash
+python md2kindle.py https://mangadex.org/title/801513ba-a712-498c-8f57-cae55b38cc92 \
+  --mode v --start 1 --end 5 --lang es-la \
+  --skip-oneshots --telegram
+```
+
+> [!NOTE]
+> El script detecta automáticamente si el idioma solicitado no tiene capítulos disponibles
+> y hace fallback automático: `es-la → en → es`.
+
 ---
 
-## ☁️ Automación en GitHub Actions
 
-En lugar de usar tu computadora localmente, puedes usar el pipeline que hemos integrado.
-
-1. Ve a la pestaña **Actions** en tu repositorio de GitHub.
-2. Selecciona el workflow: **Manga to Kindle Delivery**.
-3. Haz clic en **Run workflow** e introduce la URL de MangaDex.
-4. ¡Sigue el proceso en tiempo real y recibe el archivo en Telegram! 🕊️
-
-> [!TIP]
-> **Privacidad Local vs Cloud**: Tanto en local como en la nube, los archivos pesados (+45MB) se envían cifrados mediante `ffsend`. La llave de descifrado viaja en el enlace como un fragmento (#), por lo que el servidor nunca tiene acceso al contenido de tu manga.
-
----
 
 ## ☁️ Automatización con GitHub Actions
 
