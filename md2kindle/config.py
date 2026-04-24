@@ -3,6 +3,10 @@
 import os
 import re
 import shutil
+import warnings
+
+# Silenciar avisos de dependencias de requests (comunes en entornos CI/experimental)
+warnings.filterwarnings("ignore", message=".*urllib3.*match a supported version.*")
 
 IS_CI = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
 
