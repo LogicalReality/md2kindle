@@ -1,4 +1,4 @@
-"""md2kindle — Entry point."""
+"""md2kindle — Support for python -m md2kindle."""
 
 from md2kindle.cli import main
 

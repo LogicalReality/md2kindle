@@ -94,10 +94,10 @@ El script detecta automáticamente si las variables `TELEGRAM_TOKEN` y `TELEGRAM
 
 1. Crea un archivo `.env` en la raíz del proyecto:
 
-```
-TELEGRAM_TOKEN=tu_token_aqui
-TELEGRAM_CHAT_ID=tu_chat_id_aqui
-```
+   ```env
+   TELEGRAM_TOKEN=tu_token_aqui
+   TELEGRAM_CHAT_ID=tu_chat_id_aqui
+   ```
 
 2. Para cargarlas automáticamente, puedes usar un wrapper o configurar tu IDE/terminal.
 
@@ -268,10 +268,10 @@ Para que el bot de Telegram funcione, necesitas agregar tus credenciales:
 1. En tu repositorio de GitHub, ve a **Settings → Secrets and variables → Actions**.
 2. Crea dos secrets:
 
-| Secret | Valor |
-|--------|-------|
-| `TELEGRAM_TOKEN` | Token de tu bot de Telegram |
-| `TELEGRAM_CHAT_ID` | ID del chat donde recibirás los archivos |
+| Secret             | Valor                                     |
+| ------------------ | ----------------------------------------- |
+| `TELEGRAM_TOKEN`   | Token de tu bot de Telegram               |
+| `TELEGRAM_CHAT_ID` | ID del chat donde recibirás los archivos  |
 
 #### ¿Cómo obtener los tokens de Telegram?
 

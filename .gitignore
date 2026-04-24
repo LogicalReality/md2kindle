@@ -16,6 +16,8 @@ __pycache__/
 # Scripts de lanzamiento local (con tokens)
 run_telegram.ps1
 ffsend.exe
+mangadex-dl/
+kcc_c2e_9.6.2.exe
 
 # Variables de entorno local
 .env
