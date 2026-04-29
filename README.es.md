@@ -75,10 +75,10 @@ cd md2kindle
 ### 6. Instalar Dependencias de Python
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
-Esto instalará `requests` y `mangadex-downloader` (la librería Python oficial).
+Esto instalará `requests` y registrará el comando `md2kindle` en tu entorno usando `pyproject.toml`.
 
 > [!NOTE]
 > Si prefieres el binario standalone (`mangadex-dl.exe`), descárgalo desde
@@ -101,7 +101,13 @@ md2kindle/
 ├── mangadex-dl/
 │   └── mangadex-dl.exe
 ├── kcc_c2e_9.6.2.exe
-└── md2kindle.py
+├── md2kindle.py          ← Entry point principal
+└── md2kindle/
+    ├── cli.py            ← Parsing e interfaz interactiva
+    ├── pipeline.py       ← Orquestación del flujo
+    ├── models.py         ← Contratos de datos tipados
+    ├── mangadex/         ← API + Downloader de MangaDex
+    └── delivery/         ← Telegram + ffsend
 ```
 
 > [!TIP]
@@ -429,7 +435,26 @@ Si todo está correcto verás:
 
 ---
 
+## 🧪 Desarrollo
+
+Si querés contribuir o modificar el proyecto:
+
+```bash
+# Crear entorno virtual e instalar en modo editable
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .
+
+# Correr los tests
+.\.venv\Scripts\python.exe -m pytest tests/ -v
+
+# Verificar CLI
+.\.venv\Scripts\python.exe -m md2kindle --help
+```
+
+---
+
 ## 💡 Notas Adicionales y Resolución de Problemas
 
-- **Almacenamiento Redundante**: Si te enfrentas a problemas de disco duro, y no deseas mantener la copia ".cbz", puedes editar la variable `DELETE_CBZ_AFTER_CONVERSION` igualándola a `True` para auto-eliminar los brutos.
-- **El script falla justo antes de transformar**: A veces pasa si la herramienta `KCC` no logra encontrar el componente `kindlegen`. Asegúrate de haber instalado **Kindle Previewer** y abrilo una vez para asentar sus registros.
+- **Almacenamiento Redundante**: Si te enfrentas a problemas de disco duro, edita `DELETE_CBZ_AFTER_CONVERSION = True` en `md2kindle/config.py` para auto-eliminar los archivos `.cbz` crudos tras la conversión.
+- **El script falla justo antes de transformar**: A veces pasa si la herramienta `KCC` no logra encontrar el componente `kindlegen`. Asegúrate de haber instalado **Kindle Previewer** y abrirlo una vez para asentar sus registros.
+

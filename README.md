@@ -75,10 +75,10 @@ cd md2kindle
 ### 6. Install Python Dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
-This will install `requests` and `mangadex-downloader` (the official Python library).
+This will install `requests` and register the `md2kindle` command in your environment using `pyproject.toml`.
 
 > [!NOTE]
 > If you prefer the standalone binary (`mangadex-dl.exe`), download it from
@@ -101,7 +101,13 @@ md2kindle/
 ├── mangadex-dl/
 │   └── mangadex-dl.exe
 ├── kcc_c2e_9.6.2.exe
-└── md2kindle.py
+├── md2kindle.py          ← Main entry point
+└── md2kindle/
+    ├── cli.py            ← Argument parsing & interactive interface
+    ├── pipeline.py       ← Flow orchestration
+    ├── models.py         ← Typed data contracts
+    ├── mangadex/         ← MangaDex API + Downloader
+    └── delivery/         ← Telegram + ffsend
 ```
 
 > [!TIP]
@@ -425,7 +431,26 @@ If everything is correct you'll see:
 
 ---
 
+## 🧪 Development
+
+If you want to contribute or modify the project:
+
+```bash
+# Create virtual environment and install in editable mode
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e .
+
+# Run tests
+.\.venv\Scripts\python.exe -m pytest tests/ -v
+
+# Verify CLI
+.\.venv\Scripts\python.exe -m md2kindle --help
+```
+
+---
+
 ## 💡 Additional Notes & Troubleshooting
 
-- **Storage**: If you're running low on disk space, set `DELETE_CBZ_AFTER_CONVERSION = True` in `config.py` to automatically delete the raw `.cbz` files after conversion.
+- **Storage**: If you're running low on disk space, set `DELETE_CBZ_AFTER_CONVERSION = True` in `md2kindle/config.py` to automatically delete the raw `.cbz` files after conversion.
 - **Script fails just before converting**: This usually happens when KCC can't find the `kindlegen` component. Make sure you've installed **Kindle Previewer** and opened it at least once so it registers its internal binaries.
+
