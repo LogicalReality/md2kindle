@@ -91,23 +91,29 @@ The script detects tools in a **cascade**, with no code editing required:
 
 | Priority | Location searched |
 | :--- | :--- |
-| **1st** | Project root (`./mangadex-dl/mangadex-dl.exe`, `./kcc_c2e_*.exe`) |
-| **2nd** | System PATH (`mangadex-dl`, `kcc-c2e` installed globally) |
+| **1st** | Project folder: `./bin/` (e.g. `./bin/ffsend.exe`) |
+| **2nd** | Tool specific folders: `./bin/mangadex-dl/mangadex-dl.exe` |
+| **3rd** | Project root (Legacy/Portable) |
+| **4th** | System PATH (`mangadex-dl`, `kcc-c2e` installed globally) |
 
-**Portable Mode** — Recommended structure if using binaries directly:
+**Professional Structure** — Recommended organization for binaries:
 
 ```text
 md2kindle/
-├── mangadex-dl/
-│   └── mangadex-dl.exe
-├── kcc_c2e_9.6.2.exe
-├── md2kindle.py          ← Main entry point
-└── md2kindle/
-    ├── cli.py            ← Argument parsing & interactive interface
-    ├── pipeline.py       ← Flow orchestration
-    ├── models.py         ← Typed data contracts
-    ├── mangadex/         ← MangaDex API + Downloader
-    └── delivery/         ← Telegram + ffsend
+├── bin/
+│   ├── mangadex-dl/
+│   │   └── mangadex-dl.exe
+│   ├── kcc_c2e_9.6.2.exe
+│   └── ffsend.exe
+├── md2kindle/            # Package Source
+│   ├── cli.py            # Argument parsing
+│   ├── pipeline.py       # Flow orchestration
+│   ├── models.py         # Typed data contracts
+│   ├── config.py         # Path & tool configuration
+│   ├── mangadex/         # MangaDex API + Downloader
+│   └── delivery/         # Telegram + ffsend
+├── md2kindle.py          # Local entry point (wrapper)
+└── pyproject.toml        # Package definition
 ```
 
 > [!TIP]

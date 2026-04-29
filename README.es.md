@@ -91,23 +91,29 @@ El script detecta las herramientas en **cascada**, sin necesidad de editar códi
 
 | Prioridad | Ubicación buscada |
 | :--- | :--- |
-| **1ª** | Raíz del proyecto (`./mangadex-dl/mangadex-dl.exe`, `./kcc_c2e_*.exe`) |
-| **2ª** | PATH del sistema (`mangadex-dl`, `kcc-c2e` instalados globalmente) |
+| **1ª** | Carpeta del proyecto: `./bin/` (ej. `./bin/ffsend.exe`) |
+| **2ª** | Carpetas específicas de herramienta: `./bin/mangadex-dl/mangadex-dl.exe` |
+| **3ª** | Raíz del proyecto (Legacy/Portable) |
+| **4ª** | PATH del sistema (`mangadex-dl`, `kcc-c2e` instalados globalmente) |
 
-**Modo Portable** — Estructura recomendada si usas los binarios directamente:
+**Estructura Profesional** — Organización recomendada para los binarios:
 
 ```text
 md2kindle/
-├── mangadex-dl/
-│   └── mangadex-dl.exe
-├── kcc_c2e_9.6.2.exe
-├── md2kindle.py          ← Entry point principal
-└── md2kindle/
-    ├── cli.py            ← Parsing e interfaz interactiva
-    ├── pipeline.py       ← Orquestación del flujo
-    ├── models.py         ← Contratos de datos tipados
-    ├── mangadex/         ← API + Downloader de MangaDex
-    └── delivery/         ← Telegram + ffsend
+├── bin/
+│   ├── mangadex-dl/
+│   │   └── mangadex-dl.exe
+│   ├── kcc_c2e_9.6.2.exe
+│   └── ffsend.exe
+├── md2kindle/            # Código Fuente (Paquete)
+│   ├── cli.py            # Parsing de argumentos
+│   ├── pipeline.py       # Orquestación del flujo
+│   ├── models.py         # Contratos de datos tipados
+│   ├── config.py         # Configuración de rutas y herramientas
+│   ├── mangadex/         # API + Downloader de MangaDex
+│   └── delivery/         # Telegram + ffsend
+├── md2kindle.py          # Punto de entrada local (wrapper)
+└── pyproject.toml        # Definición del paquete
 ```
 
 > [!TIP]
