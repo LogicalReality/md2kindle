@@ -1,11 +1,14 @@
 """Consultas a la API de MangaDex."""
 
+import logging
 import re
 import json
 import urllib.request
 import urllib.parse
 
 from md2kindle.config import sanitize_filename
+
+logger = logging.getLogger(__name__)
 
 
 def get_api_data(url):
@@ -35,7 +38,7 @@ def get_manga_title_options(url):
 
         # 2. Si es un capítulo, obtener primero el ID del manga y datos del capítulo
         if link_type == "chapter":
-            print(f"[*] Detectada URL de capítulo. Buscando manga asociado...")
+            logger.info("Detectada URL de capítulo. Buscando manga asociado...")
             chap_data = get_api_data(
                 f"https://api.mangadex.org/chapter/{uuid}?includes[]=manga"
             )
@@ -113,7 +116,7 @@ def get_manga_title_options(url):
 
         return unique_options, author_name, suggestions, manga_uuid
     except Exception as e:
-        print(f"[!] Error inesperado al procesar URL: {e}")
+        logger.error("Error inesperado al procesar URL: %s", e)
         return [], "MangaDex", suggestions, None
 
 
@@ -126,5 +129,5 @@ def get_manga_aggregate(manga_uuid, lang):
             return data.get("volumes", {})
         return {}
     except Exception as e:
-        print(f"[!] Aviso: No se pudo obtener la estructura de auditoría: {e}")
+        logger.warning("No se pudo obtener la estructura de auditoría: %s", e)
         return {}

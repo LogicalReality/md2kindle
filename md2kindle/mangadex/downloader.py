@@ -1,11 +1,14 @@
 """Descarga de manga y auditoría de integridad."""
 
+import logging
 import os
 import subprocess
 import glob
 import re
 
 from md2kindle.config import MANGADEX_DL_PATH
+
+logger = logging.getLogger(__name__)
 
 
 def parse_range(start, end):
@@ -77,7 +80,7 @@ def audit_and_cleanup(
     all_cbz = glob.glob(os.path.join(target_path, "*.cbz"))
     found_chapters = set()
 
-    print("\n--- Auditoría de Integridad ---")
+    logger.info("--- Auditoría de Integridad ---")
 
     for cbz_file in all_cbz:
         filename = os.path.basename(cbz_file)
@@ -110,13 +113,14 @@ def audit_and_cleanup(
                 if local_chap_clean == "none" and not skip_oneshots:
                     pass
                 else:
-                    print(
-                        f"[-] Eliminando capítulo extra no relacionado al objetivo: {filename}"
+                    logger.info(
+                        "Eliminando capítulo extra no relacionado al objetivo: %s",
+                        filename,
                     )
                     try:
                         os.remove(cbz_file)
                     except Exception as e:
-                        print(f"[!] Error al borrar {filename}: {e}")
+                        logger.error("Error al borrar %s: %s", filename, e)
         else:
             # Si mangadex-dl lo descargo como volumen completo sin separar por capítulos
             pass
@@ -125,17 +129,20 @@ def audit_and_cleanup(
     if expected_chapters:
         missing = expected_chapters - found_chapters
         if missing:
-            print(
-                f"[!] ADVERTENCIA: La API esperaba los siguientes capítulos para el/los volumen(es) solicitado(s), pero no se encontraron (posible censura o falta de traducción):"
+            logger.warning(
+                "La API esperaba los siguientes capítulos para el/los volumen(es) solicitado(s), "
+                "pero no se encontraron (posible censura o falta de traducción):"
             )
             # Ordenar si es numerico
             sorted_missing = sorted(
                 list(missing),
                 key=lambda x: float(x) if x.replace(".", "", 1).isdigit() else 999,
             )
-            print(f"    Faltantes: {sorted_missing}")
+            logger.warning("    Faltantes: %s", sorted_missing)
         else:
-            print(f"[OK] Todos los capítulos esperados según la API están presentes.")
+            logger.info(
+                "Todos los capítulos esperados según la API están presentes."
+            )
 
 
 def download_manga(url, target_path, lang, mode, start_val, end_val, skip_oneshots):
@@ -165,19 +172,19 @@ def download_manga(url, target_path, lang, mode, start_val, end_val, skip_onesho
     cmd.extend(range_args)
     cmd.extend(["--path", target_path])
 
-    print(f"\n[*] Ejecutando descarga en: {target_path}")
-    print(f"[+] Descargando manga...")
+    logger.info("Ejecutando descarga en: %s", target_path)
+    logger.info("Descargando manga...")
 
     try:
         result = subprocess.run(
             cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
         if result.returncode == 0:
-            print(f"[OK] Descarga completada")
+            logger.info("Descarga completada")
             return True
         else:
-            print(f"[ERROR] Falló la descarga")
+            logger.error("Falló la descarga")
             return False
     except Exception as e:
-        print(f"\n[!] Excepción al ejecutar mangadex-dl: {e}")
+        logger.error("Excepción al ejecutar mangadex-dl: %s", e)
         return False

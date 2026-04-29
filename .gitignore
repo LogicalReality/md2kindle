@@ -33,6 +33,9 @@ manga/
 *.epub
 *.ps1
 
+# Agent Teams Lite
+.atl/
+
 # Personal Roadmap & Notes
 cloudflare_roadmap.md
 

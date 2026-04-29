@@ -1,5 +1,6 @@
 """Conversión de archivos CBZ a formatos Kindle usando KCC."""
 
+import logging
 import os
 import subprocess
 import glob
@@ -15,7 +16,9 @@ from md2kindle.config import (
     DELETE_CBZ_AFTER_CONVERSION,
     IS_CI,
 )
-from md2kindle.delivery import format_manga_title
+from md2kindle.models import format_manga_title
+
+logger = logging.getLogger(__name__)
 
 
 def convert_with_kcc(target_path, author="MangaDex", title=None):
@@ -36,7 +39,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
         final_output = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
         os.makedirs(final_output, exist_ok=True)
     except Exception as e:
-        print(f"[!] Error al crear carpeta de salida en KCC: {e}")
+        logger.error("Error al crear carpeta de salida en KCC: %s", e)
         final_output = OUTPUT_FOLDER_KCC
         rel_path = target_path
 
@@ -50,7 +53,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
             manga_title = "Manga"
 
     for cbz_file in cbz_files:
-        print(f"\n[+] Procesando con KCC: {os.path.basename(cbz_file)}")
+        logger.info("Procesando con KCC: %s", os.path.basename(cbz_file))
 
         # Extraer volumen del nombre del CBZ (ej: "Vol. 39.cbz" -> "Vol. 39")
         cbz_basename = os.path.splitext(os.path.basename(cbz_file))[0]
@@ -79,7 +82,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
         )
 
         try:
-            print(f"[*] Guardando en: {final_output}")
+            logger.info("Guardando en: %s", final_output)
             result = subprocess.run(
                 cmd, stderr=subprocess.DEVNULL if IS_CI else subprocess.PIPE
             )
@@ -89,7 +92,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
                 mobi_file = os.path.join(final_output, filename_no_ext + ".mobi")
                 if os.path.exists(mobi_file):
                     # Renombrar archivo con título completo
-                    manga, vol = format_manga_title(mobi_file)
+                    manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
                     new_name = f"{manga} {vol}.mobi"
                     new_path = os.path.join(final_output, new_name)
                     if new_name != os.path.basename(mobi_file):
@@ -100,6 +103,6 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
                 if DELETE_CBZ_AFTER_CONVERSION:
                     os.remove(cbz_file)
         except Exception as e:
-            print(f"\n[!] Excepción al ejecutar KCC: {e}")
+            logger.error("Excepción al ejecutar KCC: %s", e)
 
     return generated_files
