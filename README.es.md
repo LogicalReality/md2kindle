@@ -1,6 +1,6 @@
-🌐 [English](README.md) | **Español**
-
 # 📖 md2kindle (MangaDex to Kindle)
+
+🌐 [English](README.md) | **Español**
 
 Un script de automatización en Python que simplifica la descarga de manga desde [MangaDex](https://mangadex.org) y su conversión automática a formatos optimizados para e-readers Kindle usando [KCC (Kindle Comic Converter)](https://github.com/ciromattia/kcc).
 
@@ -96,7 +96,7 @@ El script detecta las herramientas en **cascada**, sin necesidad de editar códi
 
 **Modo Portable** — Estructura recomendada si usas los binarios directamente:
 
-```
+```text
 md2kindle/
 ├── mangadex-dl/
 │   └── mangadex-dl.exe
@@ -358,7 +358,7 @@ En lugar de abrir GitHub Actions manualmente, puedes enviar un mensaje a tu bot 
 
 ### Arquitectura
 
-```
+```text
 Tú → /manga <url> → Telegram → Cloudflare Worker → GitHub API → Actions → .mobi → Telegram → Tú
 ```
 
@@ -398,18 +398,19 @@ En tu Worker → **Settings** → **Variables and Secrets** → **Add**:
 
 Abre esta URL en tu navegador (reemplaza `<TU_TOKEN>` y `<TU_WORKER_URL>`):
 
-```
+```text
 https://api.telegram.org/bot<TU_TOKEN>/setWebhook?url=<TU_WORKER_URL>
 ```
 
 Si todo está correcto verás:
+
 ```json
 {"ok":true,"result":true,"description":"Webhook was set"}
 ```
 
 ### Uso
 
-```
+```text
 /manga <url> <modo> <inicio> [fin] [idioma]
 ```
 
@@ -423,7 +424,7 @@ Si todo está correcto verás:
 
 **Ejemplos:**
 
-```
+```text
 /manga https://mangadex.org/title/xxx v 1
 /manga https://mangadex.org/title/xxx v 1 5
 /manga https://mangadex.org/title/xxx c 10 20 en
@@ -457,4 +458,3 @@ py -m venv .venv
 
 - **Almacenamiento Redundante**: Si te enfrentas a problemas de disco duro, edita `DELETE_CBZ_AFTER_CONVERSION = True` en `md2kindle/config.py` para auto-eliminar los archivos `.cbz` crudos tras la conversión.
 - **El script falla justo antes de transformar**: A veces pasa si la herramienta `KCC` no logra encontrar el componente `kindlegen`. Asegúrate de haber instalado **Kindle Previewer** y abrirlo una vez para asentar sus registros.
-
