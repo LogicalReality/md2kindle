@@ -17,20 +17,32 @@ IS_CI = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "t
 # Subimos un nivel porque este archivo vive en md2kindle/config.py
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 1. Buscar en la raíz del proyecto (Modo Portable)
-MANGADEX_LOCAL = os.path.join(SCRIPT_DIR, "mangadex-dl", "mangadex-dl.exe")
-KCC_LOCAL = os.path.join(SCRIPT_DIR, "kcc_c2e_9.6.2.exe")
+# 1. Buscar en carpetas conocidas (Modo Portable)
+BIN_DIR = os.path.join(SCRIPT_DIR, "bin")
+
+def find_binary(name, subfolder=None):
+    # Intentar en bin/
+    p = os.path.join(BIN_DIR, subfolder, name) if subfolder else os.path.join(BIN_DIR, name)
+    if os.path.exists(p): return p
+    # Intentar en raíz
+    p = os.path.join(SCRIPT_DIR, subfolder, name) if subfolder else os.path.join(SCRIPT_DIR, name)
+    if os.path.exists(p): return p
+    return None
+
+MANGADEX_PATH_LOCAL = find_binary("mangadex-dl.exe", "mangadex-dl")
+KCC_PATH_LOCAL = find_binary("kcc_c2e_9.6.2.exe") or find_binary("kcc-c2e.exe")
+FFSEND_PATH_LOCAL = find_binary("ffsend.exe")
 
 # 2. Fallbacks (PATH del sistema)
 MANGADEX_DL_PATH = (
-    MANGADEX_LOCAL
-    if os.path.exists(MANGADEX_LOCAL) and os.name == "nt"
+    MANGADEX_PATH_LOCAL
+    if MANGADEX_PATH_LOCAL and os.name == "nt"
     else (shutil.which("mangadex-dl") or "mangadex-dl")
 )
 
 KCC_C2E_PATH = (
-    KCC_LOCAL
-    if os.path.exists(KCC_LOCAL) and os.name == "nt"
+    KCC_PATH_LOCAL
+    if KCC_PATH_LOCAL and os.name == "nt"
     else (shutil.which("kcc-c2e") or "kcc-c2e")
 )
 
