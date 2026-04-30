@@ -81,7 +81,7 @@ def resolve_parameters() -> PipelineParams:
                 f"  {len(options) + 1}. [Manual]           Escribir nombre personalizado..."
             )
 
-            choice = input(f"\nSelecciona una opción [1]: ").strip()
+            choice = input(f"\nSelecciona una opción [Enter para (1)]: ").strip()
             if not choice:
                 title = options[0]["title"]
             elif choice.isdigit() and 1 <= int(choice) <= len(options):
@@ -122,7 +122,7 @@ def resolve_parameters() -> PipelineParams:
     if not mode:
         mode = suggestions.get("mode") or "v"
         if is_interactive:
-            mode_input = input(f"> Modo [(v)ol / (c)ap] [{mode}]: ").strip().lower()
+            mode_input = input(f"> Modo [(v)ol / (c)ap] [{mode}] [Enter para '(v)ol']: ").strip().lower()
             if mode_input:
                 mode = "v" if mode_input in ["v", "vol"] else "c"
 
@@ -148,7 +148,7 @@ def resolve_parameters() -> PipelineParams:
         args.skip_oneshots
         if not is_interactive
         else (
-            input("> ¿Excluir capítulos 'Oneshot' / Promocionales? [S/n]: ")
+            input("> ¿Excluir capítulos 'Oneshot' / Promocionales? [S/n][Enter para 'S']: ")
             .strip()
             .lower()
             != "n"

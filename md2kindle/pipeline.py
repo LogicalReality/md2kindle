@@ -17,7 +17,7 @@ from md2kindle.mangadex import (
     audit_and_cleanup,
 )
 from md2kindle.converter import convert_with_kcc
-from md2kindle.delivery import send_to_telegram
+from md2kindle.delivery import send_to_telegram, send_to_usb
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,7 @@ def process_volume_flow(
 
     if os.path.exists(mobi_file):
         logger.info("%s ya existe. Saltando descarga y conversión...", mobi_name)
+        send_to_usb(mobi_file, params.title)
         if params.telegram:
             send_to_telegram(mobi_file)
         return
@@ -48,9 +49,11 @@ def process_volume_flow(
             folder, aggregate_data, "v", vol, vol, params.skip_oneshots
         )
         mobi_list = convert_with_kcc(folder, params.author, params.title)
-        if params.telegram and mobi_list:
+        if mobi_list:
             for m in mobi_list:
-                send_to_telegram(m)
+                send_to_usb(m, params.title)
+                if params.telegram:
+                    send_to_telegram(m)
 
 
 def process_chapter_flow(
@@ -70,6 +73,7 @@ def process_chapter_flow(
 
     if os.path.exists(mobi_file):
         logger.info("%s.mobi ya existe. Saltando descarga y conversión...", suffix)
+        send_to_usb(mobi_file, params.title)
         if params.telegram:
             send_to_telegram(mobi_file)
     else:
@@ -97,9 +101,11 @@ def process_chapter_flow(
                 params.skip_oneshots,
             )
             mobi_list = convert_with_kcc(folder, params.author, params.title)
-            if params.telegram and mobi_list:
+            if mobi_list:
                 for m in mobi_list:
-                    send_to_telegram(m)
+                    send_to_usb(m, params.title)
+                    if params.telegram:
+                        send_to_telegram(m)
 
 
 def run(params: PipelineParams) -> None:

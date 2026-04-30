@@ -31,7 +31,6 @@ manga/
 *.cbz
 *.mobi
 *.epub
-*.ps1
 
 # Agent Teams Lite
 .atl/
