@@ -22,10 +22,39 @@ from md2kindle.delivery import send_to_telegram, send_to_usb
 logger = logging.getLogger(__name__)
 
 
+def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
+    """Entrega un lote de archivos. Intenta USB primero; si falla, ofrece Telegram una sola vez."""
+    if not mobi_files:
+        return
+
+    # 1. Intentar USB para todos
+    usb_detected = False
+    for mobi_file in mobi_files:
+        if send_to_usb(mobi_file, params.title):
+            usb_detected = True
+
+    # 2. Si se pidió Telegram por flag, enviar todos
+    if params.telegram:
+        for mobi_file in mobi_files:
+            send_to_telegram(mobi_file)
+        return
+
+    # 3. Si NO se detectó Kindle y es interactivo, preguntar UNA vez por todo el lote
+    if not usb_detected:
+        is_interactive = len(sys.argv) <= 1
+        if is_interactive:
+            print(f"\n> Se generaron {len(mobi_files)} archivos pero no se detectó un Kindle.")
+            fallback = input(f"> ¿Deseas enviar todo el lote ({len(mobi_files)} archivos) por Telegram? [S/n] [Enter para 'S']: ").strip().lower()
+            if fallback != 'n':
+                for mobi_file in mobi_files:
+                    send_to_telegram(mobi_file)
+
+
+
 def process_volume_flow(
     params: PipelineParams, vol: str, base_path: str, aggregate_data: dict
-) -> None:
-    """Procesa un volumen individual: descarga → auditoría → conversión → envío."""
+) -> list[str]:
+    """Procesa un volumen individual: descarga → auditoría → conversión y retorna archivos."""
     # --- SALTAR SI YA EXISTE ---
     rel_path = os.path.join(params.title, f"Vol {vol}")
     expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
@@ -35,10 +64,7 @@ def process_volume_flow(
 
     if os.path.exists(mobi_file):
         logger.info("%s ya existe. Saltando descarga y conversión...", mobi_name)
-        send_to_usb(mobi_file, params.title)
-        if params.telegram:
-            send_to_telegram(mobi_file)
-        return
+        return [mobi_file]
 
     folder = os.path.join(base_path, f"Vol {vol}")
     os.makedirs(folder, exist_ok=True)
@@ -49,17 +75,16 @@ def process_volume_flow(
             folder, aggregate_data, "v", vol, vol, params.skip_oneshots
         )
         mobi_list = convert_with_kcc(folder, params.author, params.title)
-        if mobi_list:
-            for m in mobi_list:
-                send_to_usb(m, params.title)
-                if params.telegram:
-                    send_to_telegram(m)
+        return mobi_list or []
+    
+    return []
+
 
 
 def process_chapter_flow(
     params: PipelineParams, base_path: str, aggregate_data: dict
-) -> None:
-    """Procesa un rango de capítulos: descarga → auditoría → conversión → envío."""
+) -> list[str]:
+    """Procesa un rango de capítulos: descarga → auditoría → conversión y retorna archivos."""
     suffix = f"Cap {params.start}" + (
         f"-{params.end}" if params.start != params.end else ""
     )
@@ -73,10 +98,9 @@ def process_chapter_flow(
 
     if os.path.exists(mobi_file):
         logger.info("%s.mobi ya existe. Saltando descarga y conversión...", suffix)
-        send_to_usb(mobi_file, params.title)
-        if params.telegram:
-            send_to_telegram(mobi_file)
+        return [mobi_file]
     else:
+
         os.makedirs(folder, exist_ok=True)
         logger.info(
             "Detectado modo CAPÍTULO. Agrupando rango %s-%s...",
@@ -101,11 +125,10 @@ def process_chapter_flow(
                 params.skip_oneshots,
             )
             mobi_list = convert_with_kcc(folder, params.author, params.title)
-            if mobi_list:
-                for m in mobi_list:
-                    send_to_usb(m, params.title)
-                    if params.telegram:
-                        send_to_telegram(m)
+            return mobi_list or []
+        
+        return []
+
 
 
 def run(params: PipelineParams) -> None:
@@ -134,6 +157,8 @@ def run(params: PipelineParams) -> None:
             if aggregate_data:
                 params.lang = fb_lang
                 break
+
+    all_mobi_files = []
 
     if params.mode == "v":
         volumes = parse_range(params.start, params.end)
@@ -172,9 +197,15 @@ def run(params: PipelineParams) -> None:
             len(volumes),
         )
         for vol in volumes:
-            process_volume_flow(params, vol, base_path, aggregate_data)
+            generated = process_volume_flow(params, vol, base_path, aggregate_data)
+            all_mobi_files.extend(generated)
     else:
-        process_chapter_flow(params, base_path, aggregate_data)
+        generated = process_chapter_flow(params, base_path, aggregate_data)
+        all_mobi_files.extend(generated)
+
+    # --- ENTREGA FINAL POR LOTES ---
+    deliver_batch(all_mobi_files, params)
+
 
     logger.info("=========================================")
     logger.info(" Proceso Finalizado. Archivos generados en:\n %s", OUTPUT_FOLDER_KCC)
