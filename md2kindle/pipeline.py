@@ -60,8 +60,8 @@ def process_volume_flow(
     # --- SALTAR SI YA EXISTE ---
     rel_path = os.path.join(params.title, f"Vol {vol}")
     expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
-    # El nombre del CBZ suele ser "Vol. X.cbz" -> "Vol. X.mobi"
-    mobi_name = f"Vol. {vol}.mobi"
+    # El conversor (KCC) renombra el archivo final para incluir el nombre de la serie.
+    mobi_name = f"{params.title} Vol. {vol}.mobi"
     mobi_file = os.path.join(expected_output_dir, mobi_name)
 
     if os.path.exists(mobi_file):
@@ -70,21 +70,32 @@ def process_volume_flow(
 
     folder = os.path.join(base_path, f"Vol {vol}")
     os.makedirs(folder, exist_ok=True)
-    if download_manga(
-        params.url, folder, params.lang, "v", vol, vol, params.skip_oneshots
-    ):
-        audit_and_cleanup(
-            folder, aggregate_data, "v", vol, vol, params.skip_oneshots
-        )
-        
-        cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
-        if not cbz_files:
-            logger.warning("No se generaron archivos .cbz para el Vol %s. Limpiando...", vol)
-            shutil.rmtree(folder, ignore_errors=True)
+
+    # 2. --- SALTAR DESCARGA SI YA HAY CBZ ---
+    existing_cbzs = glob.glob(os.path.join(folder, "*.cbz"))
+    
+    if existing_cbzs:
+        logger.info("CBZ para Vol %s ya presente. Saltando descarga...", vol)
+        # Procedemos directamente a auditoría y conversión
+    else:
+        if not download_manga(
+            params.url, folder, params.lang, "v", vol, vol, params.skip_oneshots
+        ):
             return []
 
-        mobi_list = convert_with_kcc(folder, params.author, params.title)
-        return mobi_list or []
+    # Auditoría (limpia archivos basura si es necesario) y Conversión
+    audit_and_cleanup(
+        folder, aggregate_data, "v", vol, vol, params.skip_oneshots
+    )
+    
+    cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
+    if not cbz_files:
+        logger.warning("No se generaron archivos .cbz para el Vol %s. Limpiando...", vol)
+        shutil.rmtree(folder, ignore_errors=True)
+        return []
+
+    mobi_list = convert_with_kcc(folder, params.author, params.title)
+    return mobi_list or []
     
     return []
 
@@ -102,46 +113,50 @@ def process_chapter_flow(
     # --- SALTAR SI YA EXISTE ---
     rel_path = os.path.join(params.title, suffix)
     expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
-    # En modo capitulo agrupado, KCC genera un MOBI con el nombre de la carpeta
-    mobi_file = os.path.join(expected_output_dir, suffix + ".mobi")
+    # El conversor renombra el archivo para incluir el título de la serie
+    mobi_name = f"{params.title} {suffix}.mobi"
+    mobi_file = os.path.join(expected_output_dir, mobi_name)
 
     if os.path.exists(mobi_file):
         logger.info("%s.mobi ya existe. Saltando descarga y conversión...", suffix)
         return [mobi_file]
     else:
 
-        os.makedirs(folder, exist_ok=True)
-        logger.info(
-            "Detectado modo CAPÍTULO. Agrupando rango %s-%s...",
-            params.start,
-            params.end,
-        )
-        if download_manga(
-            params.url,
-            folder,
-            params.lang,
-            "c",
-            params.start,
-            params.end,
-            params.skip_oneshots,
-        ):
-            audit_and_cleanup(
+        # 2. --- SALTAR DESCARGA SI YA HAY CBZ ---
+        existing_cbzs = glob.glob(os.path.join(folder, "*.cbz"))
+
+        if existing_cbzs:
+            logger.info("Archivos CBZ para el rango %s ya presentes. Saltando descarga...", suffix)
+        else:
+            if not download_manga(
+                params.url,
                 folder,
-                aggregate_data,
+                params.lang,
                 "c",
                 params.start,
                 params.end,
                 params.skip_oneshots,
-            )
-
-            cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
-            if not cbz_files:
-                logger.warning("No se generaron archivos .cbz para el rango de capítulos. Limpiando...")
-                shutil.rmtree(folder, ignore_errors=True)
+            ):
                 return []
 
-            mobi_list = convert_with_kcc(folder, params.author, params.title)
-            return mobi_list or []
+        # Auditoría y Conversión
+        audit_and_cleanup(
+            folder,
+            aggregate_data,
+            "c",
+            params.start,
+            params.end,
+            params.skip_oneshots,
+        )
+
+        cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
+        if not cbz_files:
+            logger.warning("No se generaron archivos .cbz para el rango de capítulos. Limpiando...")
+            shutil.rmtree(folder, ignore_errors=True)
+            return []
+
+        mobi_list = convert_with_kcc(folder, params.author, params.title)
+        return mobi_list or []
         
         return []
 
