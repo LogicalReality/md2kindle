@@ -52,7 +52,7 @@ jobs:
 
       - name: Install KindleGen
         run: |
-          wget https://archive.org/download/kindlegen_linux_2_6_i386_v2_9/kindlegen_linux_2.6_i386_v2_9.tar.gz
+          wget https://archive.org/download/kindlegen2.9/kindlegen_linux_2.6_i386_v2_9.tar.gz
           tar -xzf kindlegen_linux_2.6_i386_v2_9.tar.gz
           sudo mv kindlegen /usr/local/bin/
           kindlegen -locale en || true # Verificar instalación
