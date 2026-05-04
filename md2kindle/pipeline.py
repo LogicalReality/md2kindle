@@ -7,6 +7,8 @@ cli.py construye PipelineParams → pipeline.run() ejecuta.
 import logging
 import os
 import sys
+import glob
+import shutil
 
 from md2kindle.models import PipelineParams
 from md2kindle.config import OUTPUT_FOLDER_MANGA, OUTPUT_FOLDER_KCC
@@ -74,6 +76,13 @@ def process_volume_flow(
         audit_and_cleanup(
             folder, aggregate_data, "v", vol, vol, params.skip_oneshots
         )
+        
+        cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
+        if not cbz_files:
+            logger.warning("No se generaron archivos .cbz para el Vol %s. Limpiando...", vol)
+            shutil.rmtree(folder, ignore_errors=True)
+            return []
+
         mobi_list = convert_with_kcc(folder, params.author, params.title)
         return mobi_list or []
     
@@ -124,6 +133,13 @@ def process_chapter_flow(
                 params.end,
                 params.skip_oneshots,
             )
+
+            cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
+            if not cbz_files:
+                logger.warning("No se generaron archivos .cbz para el rango de capítulos. Limpiando...")
+                shutil.rmtree(folder, ignore_errors=True)
+                return []
+
             mobi_list = convert_with_kcc(folder, params.author, params.title)
             return mobi_list or []
         
@@ -135,77 +151,65 @@ def run(params: PipelineParams) -> None:
     """Ejecuta el pipeline completo con los parámetros resueltos."""
     base_path = os.path.join(OUTPUT_FOLDER_MANGA, params.title)
 
-    # Obtener data de auditoria preventivamente
     aggregate_data = {}
+    fallback_aggregates = {}
+    fallback_list = ["es-la", "en", "es"]
+    if params.lang in fallback_list:
+        fallback_list.remove(params.lang)
+
     if params.manga_uuid:
-        logger.info("Consultando estructura de MangaDex para auditoría...")
+        logger.info("Consultando estructura de MangaDex para auditoría y fallbacks...")
         aggregate_data = get_manga_aggregate(params.manga_uuid, params.lang)
-
-    # --- Lógica de Fallback de Idioma Automático ---
-    if params.manga_uuid and not aggregate_data:
-        fallback_list = ["es-la", "en", "es"]
-        if params.lang in fallback_list:
-            fallback_list.remove(params.lang)
-
+        
         for fb_lang in fallback_list:
-            logger.info(
-                "Idioma '%s' no disponible o sin capítulos. Probando fallback: %s...",
-                params.lang,
-                fb_lang,
-            )
-            aggregate_data = get_manga_aggregate(params.manga_uuid, fb_lang)
-            if aggregate_data:
-                params.lang = fb_lang
-                break
+            fb_data = get_manga_aggregate(params.manga_uuid, fb_lang)
+            if fb_data:
+                fallback_aggregates[fb_lang] = fb_data
 
     all_mobi_files = []
 
     if params.mode == "v":
         volumes = parse_range(params.start, params.end)
+        logger.info("Detectado modo VOLUMEN. Procesando %d tomo(s) individualmente...", len(volumes))
 
-        # --- VALIDACIÓN PREVIA ---
-        if aggregate_data:
-            invalid_vols = [v for v in volumes if v not in aggregate_data]
-            if invalid_vols:
-                logger.warning(
-                    "Los siguientes volúmenes no aparecen en MangaDex (%s): %s",
-                    params.lang,
-                    invalid_vols,
-                )
-                available = sorted(
-                    list(aggregate_data.keys()),
-                    key=lambda x: (
-                        float(x) if x.replace(".", "", 1).isdigit() else 999
-                    ),
-                )
-                logger.warning("    Opciones disponibles: %s", available)
-                is_interactive = len(sys.argv) <= 1
-                if is_interactive:
-                    confirm = (
-                        input(
-                            "> ¿Deseas intentar la descarga de todos modos? [s/N]: "
-                        )
-                        .strip()
-                        .lower()
-                    )
-                    if confirm != "s":
-                        logger.info("Operación cancelada por el usuario.")
-                        return
-
-        logger.info(
-            "Detectado modo VOLUMEN. Procesando %d tomo(s) individualmente...",
-            len(volumes),
-        )
         for vol in volumes:
-            generated = process_volume_flow(params, vol, base_path, aggregate_data)
+            current_lang = params.lang
+            current_agg = aggregate_data
+
+            if current_agg and vol in current_agg:
+                pass
+            else:
+                found = False
+                for fb_lang in fallback_list:
+                    if fb_lang in fallback_aggregates and vol in fallback_aggregates[fb_lang]:
+                        logger.info("Vol %s no hallado en '%s'. Usando fallback: '%s'", vol, params.lang, fb_lang)
+                        current_lang = fb_lang
+                        current_agg = fallback_aggregates[fb_lang]
+                        found = True
+                        break
+                
+                if not found and params.manga_uuid:
+                    logger.warning("Vol %s no encontrado en MangaDex (ni principal ni fallbacks). Intentando igual...", vol)
+
+            original_lang = params.lang
+            params.lang = current_lang
+            generated = process_volume_flow(params, vol, base_path, current_agg)
+            params.lang = original_lang
+            
             all_mobi_files.extend(generated)
     else:
+        if not aggregate_data:
+            for fb_lang in fallback_list:
+                if fb_lang in fallback_aggregates:
+                    logger.info("Idioma '%s' sin datos. Usando fallback global: '%s'", params.lang, fb_lang)
+                    params.lang = fb_lang
+                    aggregate_data = fallback_aggregates[fb_lang]
+                    break
+                    
         generated = process_chapter_flow(params, base_path, aggregate_data)
         all_mobi_files.extend(generated)
 
-    # --- ENTREGA FINAL POR LOTES ---
     deliver_batch(all_mobi_files, params)
-
 
     logger.info("=========================================")
     logger.info(" Proceso Finalizado. Archivos generados en:\n %s", OUTPUT_FOLDER_KCC)

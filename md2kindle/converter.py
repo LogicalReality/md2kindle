@@ -83,6 +83,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
 
         try:
             logger.info("Guardando en: %s", final_output)
+            logger.debug("Comando KCC: %s", cmd)
             result = subprocess.run(
                 cmd, stderr=subprocess.DEVNULL if IS_CI else subprocess.PIPE
             )

@@ -7,13 +7,18 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 
+from md2kindle.config import FFSEND_PATH
+
 def upload_to_ffsend(file_path):
     """Sube un archivo a ffsend (Firefox Send) - Encriptación de Extremo a Extremo"""
-    # Verificamos si ffsend está instalado en el sistema
-    ffsend_bin = shutil.which("ffsend")
+    # Verificamos si ffsend está instalado en el sistema o en la carpeta bin/
+    ffsend_bin = FFSEND_PATH
+    if ffsend_bin == "ffsend" and not shutil.which("ffsend"):
+        ffsend_bin = None
+
     if not ffsend_bin:
         logger.error(
-            "ffsend no encontrado en el PATH. Es obligatorio para archivos > 45MB."
+            "ffsend no encontrado en el PATH ni en la carpeta bin. Es obligatorio para archivos > 45MB."
         )
         return None
 

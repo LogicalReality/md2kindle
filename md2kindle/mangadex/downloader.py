@@ -123,9 +123,10 @@ def audit_and_cleanup(
                         logger.error("Error al borrar %s: %s", filename, e)
         else:
             # Si mangadex-dl lo descargo como volumen completo sin separar por capítulos
-            pass
-
-    # Auditoria de Faltantes (Aviso no bloqueante)
+            if mode == "v":
+                # El archivo Vol. X.cbz agrupa todo. Asumimos que contiene lo esperado
+                # para evitar falsos positivos en el warning de faltantes.
+                found_chapters.update(expected_chapters)
     if expected_chapters:
         missing = expected_chapters - found_chapters
         if missing:

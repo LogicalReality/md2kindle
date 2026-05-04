@@ -9,6 +9,7 @@ license = { text = "MIT" }
 dependencies = [
     "requests",
     "mangadex-downloader>=1.0.0",
+    "python-dotenv",
 ]
 
 [project.scripts]
