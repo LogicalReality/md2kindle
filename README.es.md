@@ -12,6 +12,7 @@ Un script de automatización en Python que simplifica la descarga de manga desde
 - **Conversión Automática**: Detecta los archivos `.cbz` resultantes y lanza la conversión casi sin intervención manual.
 - **🛡️ Entrega E2EE (Zero Trace)**: Los archivos pesados (>45MB) se cifran localmente y se genera un enlace de "un solo uso" (1 descarga / 1 hora) mediante `ffsend`. Privatización total garantizada.
 - **🔗 Integración con Telegram**: Recibe tus mangas convertidos (o sus enlaces cifrados) directamente en tu móvil o app de Telegram para enviarlos a tu e-reader.
+- **🛡️ Pipeline Robusto**: Validación automática de archivos descargados y fallback de idiomas por volumen (`es-la` > `en` > `es`) para evitar carpetas vacías.
 - **☁️ GitHub Actions (Nube)**: ¡No necesitas tu PC! Dispara la descarga y conversión desde la web de GitHub y recibe el resultado en segundos.
 - **🤖 Bot de Telegram Interactivo**: Activa el workflow directamente desde Telegram con un comando — sin abrir GitHub, sin configuración adicional.
 - **⚡ Eficiencia de Procesamiento**: Detección inteligente de archivos `.mobi` existentes para saltar descargas y conversiones innecesarias.
@@ -75,10 +76,10 @@ cd md2kindle
 ### 6. Instalar Dependencias de Python
 
 ```bash
-pip install -e .
+pip install .
 ```
 
-Esto instalará `requests` y registrará el comando `md2kindle` en tu entorno usando `pyproject.toml`.
+Esto instalará `requests`, `python-dotenv` y registrará el comando `md2kindle` en tu entorno usando `pyproject.toml`.
 
 > [!NOTE]
 > Si prefieres el binario standalone (`mangadex-dl.exe`), descárgalo desde
@@ -103,7 +104,7 @@ md2kindle/
 ├── bin/
 │   ├── mangadex-dl/
 │   │   └── mangadex-dl.exe
-│   ├── kcc_c2e_9.6.2.exe
+│   ├── kcc_c2e_10.1.2.exe    # Detección dinámica (kcc*c2e*.exe)
 │   └── ffsend.exe
 ├── md2kindle/            # Código Fuente (Paquete)
 │   ├── cli.py            # Parsing de argumentos
@@ -113,6 +114,7 @@ md2kindle/
 │   ├── mangadex/         # API + Downloader de MangaDex
 │   └── delivery/         # Telegram + ffsend
 ├── md2kindle.py          # Punto de entrada local (wrapper)
+├── .env                  # Credenciales locales (opcional)
 └── pyproject.toml        # Definición del paquete
 ```
 
@@ -133,7 +135,7 @@ El script detecta automáticamente si las variables `TELEGRAM_TOKEN` y `TELEGRAM
    TELEGRAM_CHAT_ID=tu_chat_id_aqui
    ```
 
-2. Para cargarlas automáticamente, puedes usar un wrapper o configurar tu IDE/terminal.
+2. El script cargará estas variables automáticamente al iniciar mediante `python-dotenv`.
 
 > [!WARNING]
 > **Nunca subas el archivo `.env` a GitHub.** Ya está ignorado por `.gitignore`,

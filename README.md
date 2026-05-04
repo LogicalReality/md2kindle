@@ -12,6 +12,7 @@ A Python automation script that simplifies downloading manga from [MangaDex](htt
 - **Automatic Conversion**: Detects resulting `.cbz` files and launches conversion with minimal manual intervention.
 - **🛡️ E2EE Delivery (Zero Trace)**: Heavy files (>45MB) are locally encrypted and a one-time-use link (1 download / 1 hour) is generated via `ffsend`. Total privacy guaranteed.
 - **🔗 Telegram Integration**: Receive your converted manga (or encrypted links) directly on your phone or Telegram app to send to your e-reader.
+- **🛡️ Robust Pipeline**: Automatic validation of downloaded files and per-volume language fallback (`es-la` > `en` > `es`) to ensure you never get an empty folder.
 - **☁️ GitHub Actions (Cloud)**: No PC needed! Trigger the download and conversion from the GitHub web interface and receive the result in minutes.
 - **🤖 Interactive Telegram Bot**: Trigger the workflow directly from Telegram with a command — no GitHub UI needed, no extra configuration.
 - **⚡ Processing Efficiency**: Intelligent detection of existing `.mobi` files to skip unnecessary downloads and conversions.
@@ -75,10 +76,10 @@ cd md2kindle
 ### 6. Install Python Dependencies
 
 ```bash
-pip install -e .
+pip install .
 ```
 
-This will install `requests` and register the `md2kindle` command in your environment using `pyproject.toml`.
+This will install `requests`, `python-dotenv`, and register the `md2kindle` command in your environment using `pyproject.toml`.
 
 > [!NOTE]
 > If you prefer the standalone binary (`mangadex-dl.exe`), download it from
@@ -103,7 +104,7 @@ md2kindle/
 ├── bin/
 │   ├── mangadex-dl/
 │   │   └── mangadex-dl.exe
-│   ├── kcc_c2e_9.6.2.exe
+│   ├── kcc_c2e_10.1.2.exe    # Dynamic detection (kcc*c2e*.exe)
 │   └── ffsend.exe
 ├── md2kindle/            # Package Source
 │   ├── cli.py            # Argument parsing
@@ -113,6 +114,7 @@ md2kindle/
 │   ├── mangadex/         # MangaDex API + Downloader
 │   └── delivery/         # Telegram + ffsend
 ├── md2kindle.py          # Local entry point (wrapper)
+├── .env                  # Local credentials (optional)
 └── pyproject.toml        # Package definition
 ```
 
@@ -133,7 +135,7 @@ The script automatically detects if the `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` 
    TELEGRAM_CHAT_ID=your_chat_id_here
    ```
 
-2. To load them automatically, use a wrapper or configure your IDE/terminal.
+2. The script will load these automatically at startup using `python-dotenv`.
 
 > [!WARNING]
 > **Never push the `.env` file to GitHub.** It's already ignored by `.gitignore`,
