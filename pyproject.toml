@@ -10,6 +10,7 @@ dependencies = [
     "requests",
     "mangadex-downloader>=1.0.0",
     "python-dotenv",
+    "boto3",
 ]
 
 [project.scripts]

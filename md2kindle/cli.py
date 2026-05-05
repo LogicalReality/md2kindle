@@ -44,6 +44,9 @@ def resolve_parameters() -> PipelineParams:
     parser.add_argument(
         "--telegram", action="store_true", help="Enviar archivos generados a Telegram"
     )
+    parser.add_argument(
+        "--r2", action="store_true", help="Subir a Cloudflare R2 y enviar URL por Telegram"
+    )
 
     args, unknown = parser.parse_known_args()
 
@@ -168,6 +171,7 @@ def resolve_parameters() -> PipelineParams:
         skip_oneshots=skip_oneshots,
         silent=silent,
         telegram=args.telegram,
+        r2=args.r2,
     )
 
 

@@ -35,21 +35,48 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
         if send_to_usb(mobi_file, params.title):
             usb_detected = True
 
-    # 2. Si se pidió Telegram por flag, enviar todos
+    # 2. Si se pidió R2 por flag, subir y enviar link por Telegram
+    if params.r2:
+        from md2kindle.delivery.r2 import send_to_r2
+        from md2kindle.models import format_manga_title
+        from md2kindle.config import OUTPUT_FOLDER_KCC
+        from md2kindle.delivery.telegram import send_message
+        for mobi_file in mobi_files:
+            manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
+            url = send_to_r2(mobi_file, manga, vol)
+            if url:
+                send_message(f"✅ ¡{manga} {vol} subido a R2!\n\nDescargar: {url}")
+            else:
+                logger.warning(f"Fallo al subir {mobi_file} a R2. Haciendo fallback a Telegram clásico.")
+                from md2kindle.delivery.telegram import send_to_telegram
+                send_to_telegram(mobi_file)
+        return
+
+    # 3. Si se pidió Telegram por flag (envío directo del archivo)
     if params.telegram:
         for mobi_file in mobi_files:
             send_to_telegram(mobi_file)
         return
 
-    # 3. Si NO se detectó Kindle y es interactivo, preguntar UNA vez por todo el lote
+    # 4. Si NO se detectó Kindle y es interactivo, preguntar UNA vez por todo el lote
     if not usb_detected:
         is_interactive = len(sys.argv) <= 1
         if is_interactive:
             print(f"\n> Se generaron {len(mobi_files)} archivos pero no se detectó un Kindle.")
-            fallback = input(f"> ¿Deseas enviar todo el lote ({len(mobi_files)} archivos) por Telegram? [S/n] [Enter para 'S']: ").strip().lower()
-            if fallback != 'n':
+            fallback = input(f"> ¿Deseas subir el lote ({len(mobi_files)} archivos) a Cloudflare R2 y enviar el link por Telegram? [S/n/t] ('t' para archivo directo) [Enter para 'S']: ").strip().lower()
+            if fallback == 't':
                 for mobi_file in mobi_files:
                     send_to_telegram(mobi_file)
+            elif fallback != 'n':
+                from md2kindle.delivery.r2 import send_to_r2
+                from md2kindle.models import format_manga_title
+                from md2kindle.config import OUTPUT_FOLDER_KCC
+                from md2kindle.delivery.telegram import send_message
+                for mobi_file in mobi_files:
+                    manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
+                    url = send_to_r2(mobi_file, manga, vol)
+                    if url:
+                        send_message(f"✅ ¡{manga} {vol} subido a R2!\n\nDescargar: {url}")
 
 
 

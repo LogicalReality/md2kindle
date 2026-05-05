@@ -24,6 +24,7 @@ class PipelineParams:
     skip_oneshots: bool
     silent: bool
     telegram: bool
+    r2: bool
 
 
 def format_manga_title(file_path: str, output_folder_kcc: str) -> tuple[str, str]:
