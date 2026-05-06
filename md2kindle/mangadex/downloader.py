@@ -5,6 +5,8 @@ import os
 import subprocess
 import glob
 import re
+import shutil
+import zipfile
 
 from md2kindle.config import MANGADEX_DL_PATH
 
@@ -263,7 +265,7 @@ def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots):
             cmd = [
                 MANGADEX_DL_PATH,
                 url,
-                "--save-as", "cbz-single",
+                "--save-as", "raw",
                 "--language", lang,
                 "--start-chapter", start_ch,
                 "--end-chapter", end_ch,
@@ -283,5 +285,35 @@ def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots):
                     logger.warning("Falló descarga de caps %s-%s en '%s'", start_ch, end_ch, lang)
             except Exception as e:
                 logger.error("Excepción al descargar caps %s-%s: %s", start_ch, end_ch, e)
+
+    # 4. Empaquetar todo en un único CBZ para que KCC lo procese como un volumen
+    if any_success:
+        cbz_path = os.path.join(target_path, "All chapters.cbz")
+        if os.path.exists(cbz_path):
+            os.remove(cbz_path)
+
+        # Comprimir las carpetas raw en el zip
+        try:
+            with zipfile.ZipFile(cbz_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(target_path):
+                    for file in files:
+                        if file == "All chapters.cbz":
+                            continue
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, target_path)
+                        zipf.write(file_path, arcname)
+
+            # Eliminar las carpetas y archivos raw (Ch. X, cover.jpg, etc.)
+            for item in os.listdir(target_path):
+                if item == "All chapters.cbz":
+                    continue
+                item_path = os.path.join(target_path, item)
+                if os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+                else:
+                    os.remove(item_path)
+            logger.info("Empaquetado exitoso: %s", cbz_path)
+        except Exception as e:
+            logger.error("Error al empaquetar CBZ mixto: %s", e)
 
     return any_success
