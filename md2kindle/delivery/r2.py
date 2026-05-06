@@ -6,12 +6,12 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger(__name__)
 
 def get_r2_client():
-    account_id = os.environ.get("R2_ACCOUNT_ID")
+    account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID")
     access_key = os.environ.get("R2_ACCESS_KEY_ID")
     secret_key = os.environ.get("R2_SECRET_ACCESS_KEY")
 
     if not all([account_id, access_key, secret_key]):
-        logger.error("Faltan variables de entorno para Cloudflare R2 (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)")
+        logger.error("Faltan variables de entorno para Cloudflare R2 (CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)")
         return None
 
     # URL del endpoint de R2 para tu cuenta

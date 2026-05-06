@@ -4,22 +4,26 @@ Extraído de cli.py para separar la lógica de ejecución del parsing de argumen
 cli.py construye PipelineParams → pipeline.run() ejecuta.
 """
 
+import html
 import logging
 import os
 import sys
 import glob
 import shutil
 
-from md2kindle.models import PipelineParams
 from md2kindle.config import OUTPUT_FOLDER_MANGA, OUTPUT_FOLDER_KCC
+from md2kindle.converter import convert_with_kcc
+from md2kindle.delivery import send_to_telegram, send_to_usb
+from md2kindle.delivery.d1 import log_download
+from md2kindle.delivery.r2 import send_to_r2
+from md2kindle.delivery.telegram import send_message
 from md2kindle.mangadex import (
     get_manga_aggregate,
     parse_range,
     download_manga,
     audit_and_cleanup,
 )
-from md2kindle.converter import convert_with_kcc
-from md2kindle.delivery import send_to_telegram, send_to_usb
+from md2kindle.models import PipelineParams, format_manga_title
 
 logger = logging.getLogger(__name__)
 
@@ -34,33 +38,33 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
     for mobi_file in mobi_files:
         if send_to_usb(mobi_file, params.title):
             usb_detected = True
+            manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
+            log_download(manga, vol, params.lang, mobi_file, "usb")
 
     # 2. Si se pidió R2 por flag, subir y enviar link por Telegram
     if params.r2:
-        from md2kindle.delivery.r2 import send_to_r2
-        from md2kindle.models import format_manga_title
-        from md2kindle.config import OUTPUT_FOLDER_KCC
-        from md2kindle.delivery.telegram import send_message
         for mobi_file in mobi_files:
             manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
             url = send_to_r2(mobi_file, manga, vol)
             if url:
-                import html
                 safe_manga = html.escape(manga)
                 safe_vol = html.escape(vol)
                 safe_url = html.escape(url)
                 msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
                 send_message(msg_html, parse_mode="HTML")
+                log_download(manga, vol, params.lang, mobi_file, "r2")
             else:
                 logger.warning(f"Fallo al subir {mobi_file} a R2. Haciendo fallback a Telegram clásico.")
-                from md2kindle.delivery.telegram import send_to_telegram
                 send_to_telegram(mobi_file)
+                log_download(manga, vol, params.lang, mobi_file, "telegram")
         return
 
     # 3. Si se pidió Telegram por flag (envío directo del archivo)
     if params.telegram:
         for mobi_file in mobi_files:
             send_to_telegram(mobi_file)
+            manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
+            log_download(manga, vol, params.lang, mobi_file, "telegram")
         return
 
     # 4. Si NO se detectó Kindle y es interactivo, preguntar UNA vez por todo el lote
@@ -72,21 +76,19 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
             if fallback == 't':
                 for mobi_file in mobi_files:
                     send_to_telegram(mobi_file)
+                    manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
+                    log_download(manga, vol, params.lang, mobi_file, "telegram")
             elif fallback != 'n':
-                from md2kindle.delivery.r2 import send_to_r2
-                from md2kindle.models import format_manga_title
-                from md2kindle.config import OUTPUT_FOLDER_KCC
-                from md2kindle.delivery.telegram import send_message
                 for mobi_file in mobi_files:
                     manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
                     url = send_to_r2(mobi_file, manga, vol)
                     if url:
-                        import html
                         safe_manga = html.escape(manga)
                         safe_vol = html.escape(vol)
                         safe_url = html.escape(url)
                         msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
                         send_message(msg_html, parse_mode="HTML")
+                        log_download(manga, vol, params.lang, mobi_file, "r2")
 
 
 

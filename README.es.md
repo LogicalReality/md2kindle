@@ -134,11 +134,17 @@ El script detecta automáticamente si las variables `TELEGRAM_TOKEN` y `TELEGRAM
    TELEGRAM_TOKEN=tu_token_aqui
    TELEGRAM_CHAT_ID=tu_chat_id_aqui
 
+   # Cloudflare (Credencial compartida)
+   CLOUDFLARE_ACCOUNT_ID=tu_account_id
+
    # Cloudflare R2 (Opcional - Para archivos pesados)
-   R2_ACCOUNT_ID=tu_account_id
    R2_ACCESS_KEY_ID=tu_access_key
    R2_SECRET_ACCESS_KEY=tu_secret_key
    R2_BUCKET_NAME=tu_bucket_name
+
+   # Cloudflare D1 (Opcional - Para historial de descargas)
+   D1_DATABASE_ID=tu_database_id
+   D1_API_TOKEN=tu_api_token
    ```
 
 2. El script cargará estas variables automáticamente al iniciar mediante `python-dotenv`.
@@ -335,10 +341,12 @@ Para que el bot de Telegram funcione, necesitas agregar tus credenciales:
 | ------------------ | ----------------------------------------- |
 | `TELEGRAM_TOKEN`   | Token de tu bot de Telegram               |
 | `TELEGRAM_CHAT_ID` | ID del chat donde recibirás los archivos  |
-| `R2_ACCOUNT_ID`    | ID de cuenta de Cloudflare                |
+| `CLOUDFLARE_ACCOUNT_ID` | ID de cuenta de Cloudflare (compartida por R2 y D1) |
 | `R2_ACCESS_KEY_ID` | R2 API Access Key ID                      |
 | `R2_SECRET_ACCESS_KEY`| R2 API Secret Access Key               |
 | `R2_BUCKET_NAME`   | Nombre del bucket de R2                   |
+| `D1_DATABASE_ID`   | ID de la base de datos D1                 |
+| `D1_API_TOKEN`     | Cloudflare API Token para D1              |
 
 #### ¿Cómo obtener los tokens de Telegram?
 
