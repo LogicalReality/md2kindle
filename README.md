@@ -10,11 +10,11 @@ A Python automation script that simplifies downloading manga from [MangaDex](htt
 
 - **Smooth Downloads**: Download complete volumes or individual chapters, one at a time or in bulk (ranges).
 - **Automatic Conversion**: Detects resulting `.cbz` files and launches conversion with minimal manual intervention.
-- **🛡️ E2EE Delivery (Zero Trace)**: Heavy files (>45MB) are locally encrypted and a one-time-use link (1 download / 1 hour) is generated via `ffsend`. Total privacy guaranteed.
-- **🔗 Telegram Integration**: Receive your converted manga (or encrypted links) directly on your phone or Telegram app to send to your e-reader.
-- **🛡️ Robust Pipeline**: Automatic validation of downloaded files and per-volume language fallback (`es-la` > `en` > `es`) to ensure you never get an empty folder.
-- **☁️ GitHub Actions (Cloud)**: No PC needed! Trigger the download and conversion from the GitHub web interface and receive the result in minutes.
-- **🤖 Interactive Telegram Bot**: Trigger the workflow directly from Telegram with a command — no GitHub UI needed, no extra configuration.
+- **☁️ Cloudflare R2 Delivery**: Support for cloud storage delivery, overcoming Telegram's 50MB limit with high-speed download links.
+- **🔗 Telegram Integration**: Receive your converted manga (or high-speed R2 links) directly on your phone.
+- **🛡️ Robust Pipeline**: Automatic validation of downloaded files and per-volume language fallback (`es-la` > `en` > `es`).
+- **☁️ GitHub Actions (Cloud)**: Trigger the download and conversion from the GitHub web interface and receive the result in minutes.
+- **🤖 Interactive Telegram Bot**: Trigger the workflow directly from Telegram with a command.
 - **⚡ Processing Efficiency**: Intelligent detection of existing `.mobi` files to skip unnecessary downloads and conversions.
 - **Kindle-Ready**: MOBI/AZW3 format with RTL reading, advanced scaling, and double-page spread joining.
 
@@ -133,6 +133,12 @@ The script automatically detects if the `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` 
    ```env
    TELEGRAM_TOKEN=your_token_here
    TELEGRAM_CHAT_ID=your_chat_id_here
+
+   # Cloudflare R2 (Optional - For heavy files)
+   R2_ACCOUNT_ID=your_account_id
+   R2_ACCESS_KEY_ID=your_access_key
+   R2_SECRET_ACCESS_KEY=your_secret_key
+   R2_BUCKET_NAME=your_bucket_name
    ```
 
 2. The script will load these automatically at startup using `python-dotenv`.
@@ -277,6 +283,7 @@ python md2kindle.py <URL> [options]
 | `--end` | Ending number (default = `--start`) | `--end 5` |
 | `--skip-oneshots` | Skip Oneshot chapters | `--skip-oneshots` |
 | `--telegram` | Send result to Telegram | `--telegram` |
+| `--r2` | Upload to R2 and send link | `--r2` |
 | `--silent` | Reduce log verbosity | `--silent` |
 
 **Full example** — Download volumes 1 through 5 in Spanish and send to Telegram:
@@ -318,6 +325,10 @@ For the Telegram bot to work, add your credentials:
 | ------------------ | ----------------------------------------- |
 | `TELEGRAM_TOKEN`   | Your Telegram bot token                   |
 | `TELEGRAM_CHAT_ID` | The chat ID where you'll receive files    |
+| `R2_ACCOUNT_ID`    | Cloudflare Account ID                     |
+| `R2_ACCESS_KEY_ID` | R2 API Access Key ID                      |
+| `R2_SECRET_ACCESS_KEY`| R2 API Secret Access Key               |
+| `R2_BUCKET_NAME`   | Name of your R2 bucket                    |
 
 #### How to get your Telegram credentials
 
@@ -337,7 +348,7 @@ For the Telegram bot to work, add your credentials:
 ### 3. Run the Workflow
 
 1. Go to the **Actions** tab in your repository.
-2. Select the workflow: **Manga to Kindle Delivery**.
+2. Select the workflow: **Manga Pipeline (R2 & Telegram)**.
 3. Click **Run workflow** and enter:
    - **MangaDex URL** (e.g., `https://mangadex.org/title/8015...`)
    - **Mode**: `v` (volume) or `c` (chapter)
