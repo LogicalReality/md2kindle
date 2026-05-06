@@ -189,3 +189,99 @@ def download_manga(url, target_path, lang, mode, start_val, end_val, skip_onesho
     except Exception as e:
         logger.error("Excepción al ejecutar mangadex-dl: %s", e)
         return False
+
+
+def _group_contiguous_ranges(chapters):
+    """Agrupa capítulos en rangos contiguos para minimizar llamadas a mangadex-dl.
+
+    Chapters como ['51','52','53','55','56'] → [('51','53'), ('55','56')]
+    """
+    if not chapters:
+        return []
+
+    def sort_key(ch):
+        try:
+            return float(ch)
+        except ValueError:
+            return 999
+
+    sorted_chs = sorted(chapters, key=sort_key)
+    ranges = []
+    start = sorted_chs[0]
+    prev = sorted_chs[0]
+
+    for ch in sorted_chs[1:]:
+        try:
+            gap = float(ch) - float(prev)
+        except ValueError:
+            gap = 999
+        if gap > 1.0:
+            ranges.append((start, prev))
+            start = ch
+        prev = ch
+
+    ranges.append((start, prev))
+    return ranges
+
+
+def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots):
+    """Descarga un volumen usando múltiples idiomas según el mapa capítulo→idioma.
+
+    Agrupa capítulos por idioma, encuentra rangos contiguos dentro de cada grupo,
+    y ejecuta mangadex-dl una vez por rango para minimizar llamadas.
+
+    Args:
+        url: URL del manga en MangaDex.
+        target_path: Carpeta destino para los CBZ.
+        chapter_lang_map: Dict {chapter_num: lang} del mapa de capítulos.
+        skip_oneshots: Si se deben saltar oneshots.
+
+    Returns:
+        True si al menos una descarga fue exitosa.
+    """
+    # 1. Agrupar capítulos por idioma
+    lang_groups = {}
+    for chapter, lang in chapter_lang_map.items():
+        lang_groups.setdefault(lang, []).append(chapter)
+
+    # 2. Log resumen
+    summary_parts = []
+    for lang in sorted(lang_groups.keys()):
+        chs = sorted(lang_groups[lang], key=lambda x: float(x) if x.replace(".", "", 1).isdigit() else 999)
+        if len(chs) <= 3:
+            ch_str = ", ".join(chs)
+        else:
+            ch_str = f"{chs[0]}-{chs[-1]}"
+        summary_parts.append(f"{ch_str} ({lang})")
+    logger.info("Descarga mixta: %s", " | ".join(summary_parts))
+
+    # 3. Descargar cada grupo
+    any_success = False
+    for lang, chapters in lang_groups.items():
+        ranges = _group_contiguous_ranges(chapters)
+        for start_ch, end_ch in ranges:
+            cmd = [
+                MANGADEX_DL_PATH,
+                url,
+                "--save-as", "cbz-single",
+                "--language", lang,
+                "--start-chapter", start_ch,
+                "--end-chapter", end_ch,
+            ]
+            if skip_oneshots:
+                cmd.append("--no-oneshot-chapter")
+            cmd.extend(["--path", target_path])
+
+            logger.info("Descargando caps %s-%s en '%s'...", start_ch, end_ch, lang)
+            try:
+                result = subprocess.run(
+                    cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                if result.returncode == 0:
+                    any_success = True
+                else:
+                    logger.warning("Falló descarga de caps %s-%s en '%s'", start_ch, end_ch, lang)
+            except Exception as e:
+                logger.error("Excepción al descargar caps %s-%s: %s", start_ch, end_ch, e)
+
+    return any_success

@@ -21,7 +21,7 @@ from md2kindle.models import format_manga_title
 logger = logging.getLogger(__name__)
 
 
-def convert_with_kcc(target_path, author="MangaDex", title=None):
+def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
     """Convierte archivos CBZ en Kindle-friendly formats reflejando la estructura original"""
     search_pattern = os.path.join(target_path, "**", "*.cbz")
     cbz_files = glob.glob(search_pattern, recursive=True)
@@ -58,7 +58,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
         # Extraer volumen del nombre del CBZ (ej: "Vol. 39.cbz" -> "Vol. 39")
         cbz_basename = os.path.splitext(os.path.basename(cbz_file))[0]
         vol_match = re.search(r"(Vol\.?\s*\d+)", cbz_basename, re.IGNORECASE)
-        vol_str = vol_match.group(1) if vol_match else cbz_basename
+        vol_str = vol_match.group(1) if vol_match else (f"Vol. {vol_hint}" if vol_hint else cbz_basename)
 
         # Formatear titulo completo para metadatos del MOBI
         mobi_title = f"{manga_title} {vol_str}"
@@ -94,10 +94,13 @@ def convert_with_kcc(target_path, author="MangaDex", title=None):
                 if os.path.exists(mobi_file):
                     # Renombrar archivo con título completo
                     manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
+                    # Si format_manga_title no pudo extraer "Vol X", usar el hint
+                    if vol_hint and not re.search(r"Vol\.?\s*\d+", vol, re.IGNORECASE):
+                        vol = f"Vol. {vol_hint}"
                     new_name = f"{manga} {vol}.mobi"
                     new_path = os.path.join(final_output, new_name)
                     if new_name != os.path.basename(mobi_file):
-                        os.rename(mobi_file, new_path)
+                        os.replace(mobi_file, new_path)
                         mobi_file = new_path
                     generated_files.append(mobi_file)
 

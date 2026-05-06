@@ -19,8 +19,10 @@ from md2kindle.delivery.r2 import send_to_r2
 from md2kindle.delivery.telegram import send_message
 from md2kindle.mangadex import (
     get_manga_aggregate,
+    build_chapter_lang_map,
     parse_range,
     download_manga,
+    download_volume_mixed,
     audit_and_cleanup,
 )
 from md2kindle.models import PipelineParams, format_manga_title
@@ -47,10 +49,11 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
             manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
             url = send_to_r2(mobi_file, manga, vol)
             if url:
+                size_mb = os.path.getsize(mobi_file) / (1024 * 1024)
                 safe_manga = html.escape(manga)
                 safe_vol = html.escape(vol)
                 safe_url = html.escape(url)
-                msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
+                msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n📦 {size_mb:.1f} MB\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
                 send_message(msg_html, parse_mode="HTML")
                 log_download(manga, vol, params.lang, mobi_file, "r2")
             else:
@@ -83,23 +86,28 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
                     manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
                     url = send_to_r2(mobi_file, manga, vol)
                     if url:
+                        size_mb = os.path.getsize(mobi_file) / (1024 * 1024)
                         safe_manga = html.escape(manga)
                         safe_vol = html.escape(vol)
                         safe_url = html.escape(url)
-                        msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
+                        msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n📦 {size_mb:.1f} MB\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
                         send_message(msg_html, parse_mode="HTML")
                         log_download(manga, vol, params.lang, mobi_file, "r2")
 
 
 
 def process_volume_flow(
-    params: PipelineParams, vol: str, base_path: str, aggregate_data: dict
+    params: PipelineParams, vol: str, base_path: str,
+    aggregate_data: dict, fallback_aggregates: dict, lang_priority: list[str],
 ) -> list[str]:
-    """Procesa un volumen individual: descarga → auditoría → conversión y retorna archivos."""
+    """Procesa un volumen individual: descarga → auditoría → conversión y retorna archivos.
+
+    Usa fallback per-chapter: si el idioma principal no tiene todos los capítulos
+    del volumen, descarga los faltantes del siguiente idioma en la cadena de prioridad.
+    """
     # --- SALTAR SI YA EXISTE ---
     rel_path = os.path.join(params.title, f"Vol {vol}")
     expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
-    # El conversor (KCC) renombra el archivo final para incluir el nombre de la serie.
     mobi_name = f"{params.title} Vol. {vol}.mobi"
     mobi_file = os.path.join(expected_output_dir, mobi_name)
 
@@ -110,33 +118,56 @@ def process_volume_flow(
     folder = os.path.join(base_path, f"Vol {vol}")
     os.makedirs(folder, exist_ok=True)
 
-    # 2. --- SALTAR DESCARGA SI YA HAY CBZ ---
+    # --- SALTAR DESCARGA SI YA HAY CBZ ---
     existing_cbzs = glob.glob(os.path.join(folder, "*.cbz"))
-    
+
     if existing_cbzs:
         logger.info("CBZ para Vol %s ya presente. Saltando descarga...", vol)
-        # Procedemos directamente a auditoría y conversión
     else:
-        if not download_manga(
-            params.url, folder, params.lang, "v", vol, vol, params.skip_oneshots
-        ):
-            return []
+        # Construir mapa capítulo→idioma para fallback granular
+        chapter_map, is_mixed = build_chapter_lang_map(
+            vol, params.lang, aggregate_data, fallback_aggregates, lang_priority,
+        )
+
+        if is_mixed and chapter_map:
+            # Descarga mixta: múltiples idiomas por capítulo
+            if not download_volume_mixed(
+                params.url, folder, chapter_map, params.skip_oneshots,
+            ):
+                return []
+        else:
+            # Descarga normal: un solo idioma
+            # Si el mapa determinó que todo viene de un fallback, usar ese idioma
+            download_lang = params.lang
+            if chapter_map:
+                unique_lang = set(chapter_map.values())
+                if len(unique_lang) == 1:
+                    resolved_lang = next(iter(unique_lang))
+                    if resolved_lang != params.lang:
+                        logger.info(
+                            "Vol %s no hallado en '%s'. Usando fallback: '%s'",
+                            vol, params.lang, resolved_lang,
+                        )
+                        download_lang = resolved_lang
+
+            if not download_manga(
+                params.url, folder, download_lang, "v", vol, vol, params.skip_oneshots,
+            ):
+                return []
 
     # Auditoría (limpia archivos basura si es necesario) y Conversión
     audit_and_cleanup(
-        folder, aggregate_data, "v", vol, vol, params.skip_oneshots
+        folder, aggregate_data, "v", vol, vol, params.skip_oneshots,
     )
-    
+
     cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
     if not cbz_files:
         logger.warning("No se generaron archivos .cbz para el Vol %s. Limpiando...", vol)
         shutil.rmtree(folder, ignore_errors=True)
         return []
 
-    mobi_list = convert_with_kcc(folder, params.author, params.title)
+    mobi_list = convert_with_kcc(folder, params.author, params.title, vol_hint=vol)
     return mobi_list or []
-    
-    return []
 
 
 
@@ -207,15 +238,15 @@ def run(params: PipelineParams) -> None:
 
     aggregate_data = {}
     fallback_aggregates = {}
-    fallback_list = ["es-la", "en", "es"]
-    if params.lang in fallback_list:
-        fallback_list.remove(params.lang)
+    lang_priority = ["es-la", "en", "es"]
+    if params.lang in lang_priority:
+        lang_priority.remove(params.lang)
 
     if params.manga_uuid:
         logger.info("Consultando estructura de MangaDex para auditoría y fallbacks...")
         aggregate_data = get_manga_aggregate(params.manga_uuid, params.lang)
-        
-        for fb_lang in fallback_list:
+
+        for fb_lang in lang_priority:
             fb_data = get_manga_aggregate(params.manga_uuid, fb_lang)
             if fb_data:
                 fallback_aggregates[fb_lang] = fb_data
@@ -227,39 +258,20 @@ def run(params: PipelineParams) -> None:
         logger.info("Detectado modo VOLUMEN. Procesando %d tomo(s) individualmente...", len(volumes))
 
         for vol in volumes:
-            current_lang = params.lang
-            current_agg = aggregate_data
-
-            if current_agg and vol in current_agg:
-                pass
-            else:
-                found = False
-                for fb_lang in fallback_list:
-                    if fb_lang in fallback_aggregates and vol in fallback_aggregates[fb_lang]:
-                        logger.info("Vol %s no hallado en '%s'. Usando fallback: '%s'", vol, params.lang, fb_lang)
-                        current_lang = fb_lang
-                        current_agg = fallback_aggregates[fb_lang]
-                        found = True
-                        break
-                
-                if not found and params.manga_uuid:
-                    logger.warning("Vol %s no encontrado en MangaDex (ni principal ni fallbacks). Intentando igual...", vol)
-
-            original_lang = params.lang
-            params.lang = current_lang
-            generated = process_volume_flow(params, vol, base_path, current_agg)
-            params.lang = original_lang
-            
+            generated = process_volume_flow(
+                params, vol, base_path,
+                aggregate_data, fallback_aggregates, lang_priority,
+            )
             all_mobi_files.extend(generated)
     else:
         if not aggregate_data:
-            for fb_lang in fallback_list:
+            for fb_lang in lang_priority:
                 if fb_lang in fallback_aggregates:
                     logger.info("Idioma '%s' sin datos. Usando fallback global: '%s'", params.lang, fb_lang)
                     params.lang = fb_lang
                     aggregate_data = fallback_aggregates[fb_lang]
                     break
-                    
+
         generated = process_chapter_flow(params, base_path, aggregate_data)
         all_mobi_files.extend(generated)
 
