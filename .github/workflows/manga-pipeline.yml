@@ -1,4 +1,4 @@
-name: Manga to Kindle Delivery
+name: Manga Pipeline (R2 & Telegram)
 
 on:
   workflow_dispatch:

@@ -38,3 +38,8 @@ manga/
 # Personal Roadmap & Notes
 cloudflare_roadmap.md
 
+# Python Build Artifacts
+build/
+dist/
+*.egg-info/
+

@@ -11,6 +11,34 @@ from md2kindle.delivery.ffsend import upload_to_ffsend
 logger = logging.getLogger(__name__)
 
 
+def send_message(text: str, parse_mode: str = None) -> bool:
+    """Envía un mensaje de texto simple a Telegram."""
+    token = os.environ.get("TELEGRAM_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        logger.error("No se encontraron las variables de entorno TELEGRAM_TOKEN o TELEGRAM_CHAT_ID.")
+        return False
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    
+    data = {"chat_id": chat_id, "text": text}
+    if parse_mode:
+        data["parse_mode"] = parse_mode
+
+    try:
+        response = requests.post(url, data=data)
+        if response.status_code == 200:
+            logger.info("Mensaje enviado con éxito a Telegram.")
+            return True
+        else:
+            logger.error(f"Error al enviar mensaje (Status {response.status_code}): {response.text}")
+            return False
+    except Exception as e:
+        logger.error(f"Excepción al contactar con Telegram: {e}")
+        return False
+
+
 def send_to_telegram(file_path):
     """Envía el archivo generado a un chat de Telegram usando el Bot API o ffsend si es pesado"""
     token = os.environ.get("TELEGRAM_TOKEN")

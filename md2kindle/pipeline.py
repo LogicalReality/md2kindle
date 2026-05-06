@@ -45,7 +45,12 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
             manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
             url = send_to_r2(mobi_file, manga, vol)
             if url:
-                send_message(f"✅ ¡{manga} {vol} subido a R2!\n\nDescargar: {url}")
+                import html
+                safe_manga = html.escape(manga)
+                safe_vol = html.escape(vol)
+                safe_url = html.escape(url)
+                msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
+                send_message(msg_html, parse_mode="HTML")
             else:
                 logger.warning(f"Fallo al subir {mobi_file} a R2. Haciendo fallback a Telegram clásico.")
                 from md2kindle.delivery.telegram import send_to_telegram
@@ -76,7 +81,12 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
                     manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
                     url = send_to_r2(mobi_file, manga, vol)
                     if url:
-                        send_message(f"✅ ¡{manga} {vol} subido a R2!\n\nDescargar: {url}")
+                        import html
+                        safe_manga = html.escape(manga)
+                        safe_vol = html.escape(vol)
+                        safe_url = html.escape(url)
+                        msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
+                        send_message(msg_html, parse_mode="HTML")
 
 
 
