@@ -96,7 +96,10 @@ def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
                     manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
                     # Si format_manga_title no pudo extraer "Vol X", usar el hint
                     if vol_hint and not re.search(r"Vol\.?\s*\d+", vol, re.IGNORECASE):
-                        vol = f"Vol. {vol_hint}"
+                        if str(vol_hint).startswith("Cap") or str(vol_hint).startswith("Vol"):
+                            vol = str(vol_hint)
+                        else:
+                            vol = f"Vol. {vol_hint}"
                     new_name = f"{manga} {vol}.mobi"
                     new_path = os.path.join(final_output, new_name)
                     if new_name != os.path.basename(mobi_file):

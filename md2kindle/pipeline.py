@@ -216,6 +216,11 @@ def process_chapter_flow(
                 params.skip_oneshots,
             ):
                 return []
+            
+            # Renombrar "All chapters.cbz" a un nombre más descriptivo
+            all_ch_cbz = os.path.join(folder, "All chapters.cbz")
+            if os.path.exists(all_ch_cbz):
+                os.rename(all_ch_cbz, os.path.join(folder, f"{suffix}.cbz"))
 
         # Auditoría y Conversión
         audit_and_cleanup(
@@ -233,7 +238,7 @@ def process_chapter_flow(
             shutil.rmtree(folder, ignore_errors=True)
             return []
 
-        mobi_list = convert_with_kcc(folder, params.author, params.title)
+        mobi_list = convert_with_kcc(folder, params.author, params.title, vol_hint=suffix)
         return mobi_list or []
         
         return []
