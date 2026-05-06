@@ -226,7 +226,7 @@ def _group_contiguous_ranges(chapters):
     return ranges
 
 
-def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots):
+def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots=False, vol=None):
     """Descarga un volumen usando múltiples idiomas según el mapa capítulo→idioma.
 
     Agrupa capítulos por idioma, encuentra rangos contiguos dentro de cada grupo,
@@ -288,7 +288,8 @@ def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots):
 
     # 4. Empaquetar todo en un único CBZ para que KCC lo procese como un volumen
     if any_success:
-        cbz_path = os.path.join(target_path, "All chapters.cbz")
+        cbz_name = f"Vol {vol}.cbz" if vol else "All chapters.cbz"
+        cbz_path = os.path.join(target_path, cbz_name)
         if os.path.exists(cbz_path):
             os.remove(cbz_path)
 
@@ -297,7 +298,7 @@ def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots):
             with zipfile.ZipFile(cbz_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 for root, dirs, files in os.walk(target_path):
                     for file in files:
-                        if file == "All chapters.cbz":
+                        if file == cbz_name:
                             continue
                         file_path = os.path.join(root, file)
                         arcname = os.path.relpath(file_path, target_path)
@@ -305,7 +306,7 @@ def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots):
 
             # Eliminar las carpetas y archivos raw (Ch. X, cover.jpg, etc.)
             for item in os.listdir(target_path):
-                if item == "All chapters.cbz":
+                if item == cbz_name:
                     continue
                 item_path = os.path.join(target_path, item)
                 if os.path.isdir(item_path):

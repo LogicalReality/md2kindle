@@ -132,7 +132,7 @@ def process_volume_flow(
         if is_mixed and chapter_map:
             # Descarga mixta: múltiples idiomas por capítulo
             if not download_volume_mixed(
-                params.url, folder, chapter_map, params.skip_oneshots,
+                params.url, folder, chapter_map, params.skip_oneshots, vol=vol
             ):
                 return []
         else:
