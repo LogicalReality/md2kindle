@@ -53,7 +53,11 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
                 safe_manga = html.escape(manga)
                 safe_vol = html.escape(vol)
                 safe_url = html.escape(url)
-                msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n📦 {size_mb:.1f} MB\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
+                msg_html = (
+                    f"📖 <b>{safe_manga}</b> - {safe_vol}\n\n"
+                    f"🔒 Cloudflare R2 (archivo de {size_mb:.2f} MB). Expira en 7d:\n\n"
+                    f"🔗 <a href='{safe_url}'>DESCARGAR AHORA</a>"
+                )
                 send_message(msg_html, parse_mode="HTML")
                 log_download(manga, vol, params.lang, mobi_file, "r2")
             else:
@@ -90,7 +94,11 @@ def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
                         safe_manga = html.escape(manga)
                         safe_vol = html.escape(vol)
                         safe_url = html.escape(url)
-                        msg_html = f"✅ ¡<b>{safe_manga}</b> {safe_vol} subido a R2!\n📦 {size_mb:.1f} MB\n\n👉 <a href='{safe_url}'>Descargar Manga</a>"
+                        msg_html = (
+                            f"📖 <b>{safe_manga}</b> - {safe_vol}\n\n"
+                            f"🔒 Cloudflare R2 (archivo de {size_mb:.2f} MB). Expira en 7d:\n\n"
+                            f"🔗 <a href='{safe_url}'>DESCARGAR AHORA</a>"
+                        )
                         send_message(msg_html, parse_mode="HTML")
                         log_download(manga, vol, params.lang, mobi_file, "r2")
 
