@@ -12,7 +12,7 @@ Un script de automatización en Python que simplifica la descarga de manga desde
 - **Conversión Automática**: Detecta los archivos `.cbz` resultantes y lanza la conversión casi sin intervención manual.
 - **☁️ Entrega vía Cloudflare R2**: Soporte para entrega mediante la nube, superando el límite de 50MB de Telegram con enlaces de alta velocidad.
 - **🔗 Integración con Telegram**: Recibe tus mangas convertidos (o sus enlaces de R2) directamente en tu móvil.
-- **🛡️ Pipeline Robusto**: Validación automática de archivos descargados y fallback de idiomas por volumen (`es-la` > `en` > `es`).
+- **🛡️ Pipeline Robusto**: Validación automática de archivos descargados y fallback granular por capítulo (`es-la` > `en` > `es`).
 - **☁️ GitHub Actions (Nube)**: ¡No necesitas tu PC! Dispara la descarga y conversión desde la web de GitHub y recibe el resultado en segundos.
 - **🤖 Bot de Telegram Interactivo**: Activa el workflow directamente desde Telegram con un comando.
 - **⚡ Eficiencia de Procesamiento**: Detección inteligente de archivos `.mobi` existentes para saltar descargas y conversiones innecesarias.
@@ -311,8 +311,7 @@ python md2kindle.py https://mangadex.org/title/801513ba-a712-498c-8f57-cae55b38c
 ```
 
 > [!NOTE]
-> El script detecta automáticamente si el idioma solicitado no tiene capítulos disponibles
-> y hace fallback automático: `es-la → en → es`.
+> El script analiza el volumen y descarga capítulos faltantes usando fallback granular:`es-la → en → es`.
 
 ---
 
