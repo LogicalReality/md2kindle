@@ -371,7 +371,7 @@ Para que el bot de Telegram funcione, necesitas agregar tus credenciales:
 
 ### 4. Recibir el Archivo
 
-- Con **R2 activado** (por defecto): Recibirás un **link de descarga** limpio por Telegram, válido por 7 días. Los archivos se borran automáticamente del bucket a los 15 días.
+- Con **R2 activado** (por defecto): Recibirás un **link de descarga** limpio por Telegram, válido por 7 días. Los archivos se borran automáticamente del bucket a los 7 días (en sincronía con la expiración del enlace).
 - Con **R2 desactivado** (o si falla la subida a R2): El sistema hace fallback automático al método legado — archivos menores a 50MB se envían directamente por Telegram; los más pesados usan enlaces E2EE de ffsend.
 
 > [!TIP]

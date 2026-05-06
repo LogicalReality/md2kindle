@@ -367,7 +367,7 @@ For the Telegram bot to work, add your credentials:
 
 ### 4. Receive the File
 
-- With **R2 enabled** (default): You'll receive a clean **download link** via Telegram, valid for 7 days. Files are automatically deleted from the bucket after 15 days.
+- With **R2 enabled** (default): You'll receive a clean **download link** via Telegram, valid for 7 days. Files are automatically deleted from the bucket after 7 days (in sync with the link expiry).
 - With **R2 disabled** (or if R2 upload fails): Automatically falls back to the legacy method — files under 50MB are sent directly via Telegram; larger files use ffsend E2EE links.
 
 > [!TIP]
