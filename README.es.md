@@ -24,11 +24,11 @@ Un script de automatización en Python que simplifica la descarga de manga desde
 
 Para la estructura general, asegúrate de tener instaladas las siguientes herramientas en tu entorno (Windows):
 
-1. **[Python 3.x](https://www.python.org/downloads/)**: El intérprete necesario para este script.
+1. **[Python 3.13+](https://www.python.org/downloads/)**: El intérprete necesario para este script.
 2. **[mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases)**: Motor para la extracción de mangas. (`mangadex-dl.exe`).
 3. **[Kindle Comic Converter (KCC)](https://github.com/ciromattia/kcc/releases)**: Requiere el ejecutable especializado `kcc_c2e.exe`.
 4. **[Kindle Previewer](https://www.amazon.com/Kindle-Previewer/b?ie=UTF8&node=21381691011)**: KCC lo usa para generar archivos `.mobi`.
-5. **[ffsend](https://github.com/timvisee/ffsend/releases)**: Necesario para la entrega cifrada (E2EE) de archivos pesados.
+5. **[ffsend](https://github.com/timvisee/ffsend/releases)**: Fallback para la entrega de archivos pesados cuando R2 no está disponible. Requerido para archivos de más de 50MB.
 
 ---
 
@@ -55,16 +55,16 @@ Descarga e instala Python desde [python.org](https://www.python.org/downloads/).
 > [!NOTE]
 > Sin Kindle Previewer, KCC fallará en el paso final de conversión con un error sobre `kindlegen`.
 
-### 4. [Opcional] Descargar ffsend para Entregas Cifradas
+### 4. Instalar ffsend (Fallback para Archivos Pesados)
 
-Si planeas usar la función de Telegram con archivos pesados (+45MB), necesitas `ffsend`:
+`ffsend` se usa como fallback automático cuando Cloudflare R2 no está disponible y el archivo pesa más de 50MB.
 
 1. Ve a [timvisee/ffsend/releases](https://github.com/timvisee/ffsend/releases).
 2. Descarga el binario de Windows.
-3. Colócalo en la carpeta del proyecto o agrégalo al PATH del sistema.
+3. Colocalo en `./bin/ffsend.exe` o agregalo al PATH del sistema.
 
 > [!TIP]
-> Si no usas Telegram o solo envías archivos pequeños, puedes omitir este paso.
+> Si usas Cloudflare R2 de forma exclusiva y nunca falla, el script no va a necesitar `ffsend`. Pero tenerlo instalado garantiza que el pipeline nunca se quede sin salida.
 
 ### 5. Clonar o Descargar el Repositorio
 
@@ -79,7 +79,7 @@ cd md2kindle
 pip install .
 ```
 
-Esto instalará `requests`, `python-dotenv` y registrará el comando `md2kindle` en tu entorno usando `pyproject.toml`.
+Esto instalará `requests`, `python-dotenv`, `boto3` (para Cloudflare R2) y registrará el comando `md2kindle` en tu entorno usando `pyproject.toml`.
 
 > [!NOTE]
 > Si prefieres el binario standalone (`mangadex-dl.exe`), descárgalo desde
@@ -112,7 +112,7 @@ md2kindle/
 │   ├── models.py         # Contratos de datos tipados
 │   ├── config.py         # Configuración de rutas y herramientas
 │   ├── mangadex/         # API + Downloader de MangaDex
-│   └── delivery/         # Telegram + ffsend
+│   └── delivery/         # Telegram + R2 + ffsend (legacy)
 ├── md2kindle.py          # Punto de entrada local (wrapper)
 ├── .env                  # Credenciales locales (opcional)
 └── pyproject.toml        # Definición del paquete
@@ -288,7 +288,15 @@ python md2kindle.py <URL> [opciones]
 | `--r2` | Subir a R2 y enviar enlace | `--r2` |
 | `--silent` | Reducir verbosidad de logs | `--silent` |
 
-**Ejemplo completo** — Descargar los volúmenes 1 al 5 en español y enviar a Telegram:
+**Ejemplo completo** — Descargar los volúmenes 1 al 5 en español y subir a R2:
+
+```bash
+python md2kindle.py https://mangadex.org/title/801513ba-a712-498c-8f57-cae55b38cc92 \
+  --mode v --start 1 --end 5 --lang es-la \
+  --skip-oneshots --r2
+```
+
+**Alternativa** — Enviar el archivo directamente por Telegram (archivos menores a 50MB):
 
 ```bash
 python md2kindle.py https://mangadex.org/title/801513ba-a712-498c-8f57-cae55b38cc92 \
@@ -363,11 +371,11 @@ Para que el bot de Telegram funcione, necesitas agregar tus credenciales:
 
 ### 4. Recibir el Archivo
 
-- Si el archivo es menor a 45MB, arrive directamente a Telegram.
-- Si es mayor, recibirás un **enlace efímero E2EE** de ffsend (1 descarga / 1 hora).
+- Con **R2 activado** (por defecto): Recibirás un **link de descarga** limpio por Telegram, válido por 7 días. Los archivos se borran automáticamente del bucket a los 15 días.
+- Con **R2 desactivado** (o si falla la subida a R2): El sistema hace fallback automático al método legado — archivos menores a 50MB se envían directamente por Telegram; los más pesados usan enlaces E2EE de ffsend.
 
 > [!TIP]
-> **Privacidad**: La llave de descifrado viaja en el fragmento del URL (`#`), por lo que ni siquiera el servidor de ffsend puede ver tu manga.
+> R2 es el método recomendado para cualquier tamaño de archivo — es más rápido, no tiene límite de peso y no depende de las restricciones de subida de Telegram.
 
 ---
 
