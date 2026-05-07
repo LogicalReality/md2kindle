@@ -2,489 +2,128 @@
 
 **English** | [🌐 Español](README.es.md)
 
-A Python automation script that simplifies downloading manga from [MangaDex](https://mangadex.org) and automatically converting it to Kindle-optimized formats using [KCC (Kindle Comic Converter)](https://github.com/ciromattia/kcc).
+An automation pipeline to download manga from [MangaDex](https://mangadex.org) and convert it into Kindle-optimized formats (`.mobi`/`.azw3`) using [KCC](https://github.com/ciromattia/kcc). Designed to run locally or in the cloud via GitHub Actions, with a Telegram bot for added convenience.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Quick Start
 
-- **Smooth Downloads**: Download complete volumes or individual chapters, one at a time or in bulk (ranges).
-- **Automatic Conversion**: Detects resulting `.cbz` files and launches conversion with minimal manual intervention.
-- **☁️ Cloudflare R2 Delivery**: Support for cloud storage delivery, overcoming Telegram's 50MB limit with high-speed download links.
-- **🔗 Telegram Integration**: Receive your converted manga (or high-speed R2 links) directly on your phone.
-- **🛡️ Robust Pipeline**: Automatic validation of downloaded files and granular per-chapter language fallback (`es-la` > `en` > `es`).
-- **☁️ GitHub Actions (Cloud)**: Trigger the download and conversion from the GitHub web interface and receive the result in minutes.
-- **🤖 Interactive Telegram Bot**: Trigger the workflow directly from Telegram with a command.
-- **⚡ Processing Efficiency**: Intelligent detection of existing `.mobi` files to skip unnecessary downloads and conversions.
-- **Kindle-Ready**: MOBI/AZW3 format with RTL reading, advanced scaling, and double-page spread joining.
+Get your first manga on your Kindle in 3 steps:
 
----
+1. **Install Prerequisites**: [Python 3.13](https://www.python.org/downloads/) and download [kcc_c2e](https://github.com/ciromattia/kcc/releases), [mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases), and [ffsend](https://github.com/timvisee/ffsend/releases) binaries into the `bin/` folder (you must create it manually at the project root).
+2. **Setup Environment**:
 
-## 🛠️ Prerequisites
-
-Make sure the following tools are installed in your environment (Windows):
-
-1. **[Python 3.13+](https://www.python.org/downloads/)**: The interpreter required to run the script.
-2. **[mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases)**: Engine for manga extraction. (`mangadex-dl.exe`).
-3. **[Kindle Comic Converter (KCC)](https://github.com/ciromattia/kcc/releases)**: Requires the specialized `kcc_c2e.exe` executable.
-4. **[Kindle Previewer](https://www.amazon.com/Kindle-Previewer/b?ie=UTF8&node=21381691011)**: Used by KCC to generate `.mobi` files.
-5. **[ffsend](https://github.com/timvisee/ffsend/releases)**: Fallback for heavy file delivery when R2 is unavailable. Required for files over 50MB.
-
----
-
-## 🖥️ Local Setup — Step by Step
-
-Follow these steps to get your environment ready to run on your machine.
-
-### 1. Install Python 3.x
-
-Download and install Python from [python.org](https://www.python.org/downloads/). During installation, check the **"Add Python to PATH"** option.
-
-### 2. Download mangadex-dl
-
-1. Go to [mansuf/mangadex-downloader/releases](https://github.com/mansuf/mangadex-downloader/releases).
-2. Download the Windows binary (`mangadex-dl.exe`).
-3. Create a folder at `C:\mangadex-dl\` and place the executable there.
-
-### 3. Install Kindle Previewer (Kindlegen)
-
-1. Download **Kindle Previewer** from [amazon.com/Kindle-Previewer](https://www.amazon.com/Kindle-Previewer/b?ie=UTF8&node=21381691011).
-2. Install it and open it **at least once** so it registers its internal binaries.
-3. KCC will detect it automatically.
-
-> [!NOTE]
-> Without Kindle Previewer, KCC will fail at the final conversion step with an error about `kindlegen`.
-
-### 4. Install ffsend (Fallback for Heavy Files)
-
-`ffsend` is used as an automatic fallback when Cloudflare R2 is not available and the file is over 50MB.
-
-1. Go to [timvisee/ffsend/releases](https://github.com/timvisee/ffsend/releases).
-2. Download the Windows binary.
-3. Place it in `./bin/ffsend.exe` or add it to the system PATH.
-
-> [!TIP]
-> If you exclusively use Cloudflare R2 and it never fails, the script won't need `ffsend`. But having it installed ensures the pipeline never gets stuck.
-
-### 5. Clone or Download the Repository
-
-```bash
-git clone https://github.com/LogicalReality/md2kindle.git
-cd md2kindle
-```
-
-### 6. Install Python Dependencies
-
-```bash
-pip install .
-```
-
-This will install `requests`, `python-dotenv`, `boto3` (for Cloudflare R2), and register the `md2kindle` command in your environment using `pyproject.toml`.
-
-> [!NOTE]
-> If you prefer the standalone binary (`mangadex-dl.exe`), download it from
-> [mansuf/mangadex-downloader/releases](https://github.com/mansuf/mangadex-downloader/releases)
-> and place it inside `mangadex-dl/` at the project root. The script will detect it automatically.
-
-### 7. Place Binaries (Auto-Detection)
-
-The script detects tools in a **cascade**, with no code editing required:
-
-| Priority | Location searched |
-| :--- | :--- |
-| **1st** | Project folder: `./bin/` (e.g. `./bin/ffsend.exe`) |
-| **2nd** | Tool specific folders: `./bin/mangadex-dl/mangadex-dl.exe` |
-| **3rd** | Project root (Legacy/Portable) |
-| **4th** | System PATH (`mangadex-dl`, `kcc-c2e` installed globally) |
-
-**Professional Structure** — Recommended organization for binaries:
-
-```text
-md2kindle/
-├── bin/
-│   ├── mangadex-dl/
-│   │   └── mangadex-dl.exe
-│   ├── kcc_c2e_10.1.2.exe    # Dynamic detection (kcc*c2e*.exe)
-│   └── ffsend.exe
-├── md2kindle/            # Package Source
-│   ├── cli.py            # Argument parsing
-│   ├── pipeline.py       # Flow orchestration
-│   ├── models.py         # Typed data contracts
-│   ├── config.py         # Path & tool configuration
-│   ├── mangadex/         # MangaDex API + Downloader
-│   └── delivery/         # Telegram + R2 + ffsend (legacy)
-├── md2kindle.py          # Local entry point (wrapper)
-├── .env                  # Local credentials (optional)
-└── pyproject.toml        # Package definition
-```
-
-> [!TIP]
-> If you installed `mangadex-downloader` via pip, you don't need the binary.
-> The script will find it in the PATH automatically.
-
-### 8. [Optional] Configure Telegram Environment Variables
-
-The script automatically detects if the `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` variables are available. You have three ways to configure them:
-
-#### Option A: `.env` file (Recommended for local development)
-
-1. Create a `.env` file in the project root:
-
-   ```env
-   TELEGRAM_TOKEN=your_token_here
-   TELEGRAM_CHAT_ID=your_chat_id_here
-
-   # Cloudflare (Shared credential)
-   CLOUDFLARE_ACCOUNT_ID=your_account_id
-
-   # Cloudflare R2 (Optional - For heavy files)
-   R2_ACCESS_KEY_ID=your_access_key
-   R2_SECRET_ACCESS_KEY=your_secret_key
-   R2_BUCKET_NAME=your_bucket_name
-
-   # Cloudflare D1 (Optional - For download history)
-   D1_DATABASE_ID=your_database_id
-   D1_API_TOKEN=your_api_token
+   ```bash
+   git clone https://github.com/LogicalReality/md2kindle.git
+   cd md2kindle
+   pip install -e .
    ```
 
-2. The script will load these automatically at startup using `python-dotenv`.
+3. **Run your first download**:
+   You can run the interactive assistant by simply executing `run.bat` (Windows) or via Python:
 
-> [!WARNING]
-> **Never push the `.env` file to GitHub.** It's already ignored by `.gitignore`,
-> but verify it's not tracked before committing.
-
-#### Option B: System Variables (Windows CMD)
-
-```cmd
-set TELEGRAM_TOKEN=your_token_here
-set TELEGRAM_CHAT_ID=your_chat_id_here
-python md2kindle.py --url "..." --telegram
-```
-
-#### Option C: PowerShell
-
-```powershell
-$env:TELEGRAM_TOKEN="your_token_here"
-$env:TELEGRAM_CHAT_ID="your_chat_id_here"
-python md2kindle.py --url "..." --telegram
-```
+   ```bash
+   python md2kindle.py
+   ```
 
 ---
 
-## ⚙️ Configuration
+## ✨ Why use this?
 
-All central configuration lives in `md2kindle/config.py`. The default values work without modification in most cases:
+| Feature | Benefit |
+| :--- | :--- |
+| **Intelligent Fallback** | Automatically tries `es-la` > `es` > `en` per chapter. |
+| **Kindle Optimized** | RTL reading, upscaling, and double-page spread rotation. |
+| **Delivery Freedom** | Direct Telegram (under 50MB) or high-speed Cloudflare R2 links. |
+| **Zero Maintenance** | Detects binaries automatically in `./bin/` or System PATH. |
+| **Cloud Native** | Run it via GitHub Actions or trigger it from Telegram. |
 
-```python
-# ==========================================
-# CONFIGURATION  (md2kindle/config.py)
-# ==========================================
+---
 
-# Output folders — Relative to the project
-OUTPUT_FOLDER_MANGA = "./downloads"   # Downloaded CBZ files
-OUTPUT_FOLDER_KCC   = "./output"      # Converted MOBI/AZW3 files
+## 🛠️ Requirements & Setup
 
-# KCC settings
-KCC_PROFILE     = "KO"               # KO = Kindle Oasis / Paperwhite 12
-KCC_FORMAT      = "MOBI"             # Dual MOBI/AZW3 format
-KCC_CUSTOM_ARGS = ["-m", "-r", "1", "-u"]
+### 1. Binaries Priority Table
 
-# General behavior
-DELETE_CBZ_AFTER_CONVERSION   = False
-DEFAULT_LANGUAGE               = "es-la"
-SKIP_ONESHOTS_ON_VOLUME_MODE   = True
-```
+The script searches for tools in this order. **No configuration required.**
 
-## 🛠️ Advanced Configuration Guide
-
-### 1. Kindle Comic Converter (KCC) - `kcc-c2e`
-
-These settings define the quality and format of the final file your Kindle will read.
-
-- `KCC_PROFILE`: Determines output resolution. `KO` is ideal for Kindle Oasis/Paperwhite 12.
-- `KCC_FORMAT`: Final file format (`MOBI`, `AZW3`, `KFX`, `EPUB`).
-
-#### KCC Custom Arguments (`KCC_CUSTOM_ARGS`)
-
-Use these flags inside the list (e.g., `["-m", "-u"]`).
-
-| Flag | Description | Recommendation |
+| Priority | Location | Recommendation |
 | :--- | :--- | :--- |
-| `-m` | **Manga Mode**: Enables Right-to-Left (RTL) reading. | **On** |
-| `-r 1` | **Rotate Spreads**: Detects double-page spreads and rotates them 90°. | **On** |
-| `-u` | **Upscale**: Scales small images to fill the screen. | **On** |
-| `-w` | **Webtoon**: Processes files as infinite vertical strips. | **On** (Webtoons only) |
-| `-c` | **Color**: Disables grayscale conversion. | **On** (Kindle Color) |
-| `-q` | **Quality**: High-quality resizing algorithm. | **On** |
+| **1st** | `./bin/` | Put `mangadex-dl.exe`, `kcc_c2e.exe`, and `ffsend.exe` here. |
+| **2nd** | System PATH | Install tools globally for access from anywhere. |
+| **3rd** | Python venv | If you installed `mangadex-downloader` via pip. |
 
-### 2. MangaDex Downloader
+> [!IMPORTANT]
+> **Kindle Previewer** must be installed and opened at least once on your system for KCC to generate `.mobi` files correctly.
 
-Configures how the engine (`mangadex-dl`) searches and filters chapters on the servers.
+### 2. Environment Configuration (`.env`)
 
-- **`SKIP_ONESHOTS_ON_VOLUME_MODE`**:
-  - `True`: (Recommended) Ignores "Oneshot" or special chapters.
-  - `False`: Includes everything listed.
-- **`DEFAULT_LANGUAGE`**: Sets the download language. If a chapter doesn't exist in this language, the script will ask which version to download.
+Create a `.env` file for automated delivery (Telegram/Cloudflare):
 
-#### Priority Language Codes
+```env
+# Telegram
+TELEGRAM_TOKEN=your_token_here
+TELEGRAM_CHAT_ID=your_id_here
 
-| Priority | Code | Language |
-| :--- | :---: | :--- |
-| **🥇 Primary** | `es-la` | Spanish (Latin America) |
-| **🥈 Fallback** | `es` | Spanish (Spain) |
-| **🇬🇧 Global** | `en` | English |
-| **🇯🇵 Original** | `ja` | Japanese |
-| **🇧🇷 Extra** | `pt-br` | Portuguese (Brazil) |
+# Cloudflare (R2 Storage)
+CLOUDFLARE_ACCOUNT_ID=your_account_id
+R2_ACCESS_KEY_ID=your_access_key
+R2_SECRET_ACCESS_KEY=your_secret_key
+R2_BUCKET_NAME=your_bucket_name
 
-> [!TIP]
-> You can see the full list (40+ languages) by running `mangadex-dl --list-languages` in your terminal.
-
-### 3. Script Automation
-
-Internal logic settings for `md2kindle.py`.
-
-- `DELETE_CBZ_AFTER_CONVERSION`:
-  - `False`: Keeps the original `.cbz` file.
-  - `True`: Automatically deletes the `.cbz` to save disk space.
+# Cloudflare (D1 History - Optional)
+D1_DATABASE_ID=your_database_id
+D1_API_TOKEN=your_api_token
+```
 
 ---
 
-## 🏃 Usage
+## 🏃 Usage Guide
 
-You can operate this tool in two modes:
-
-### Console Method (Classic)
-
-Open a terminal (CMD or PowerShell), navigate to the project folder and run:
+### CLI Cheat Sheet
 
 ```bash
-python md2kindle.py
+python md2kindle.py <URL> [OPTIONS]
 ```
 
-### Interactive Assistant
-
-When started, you'll be prompted with the following questions:
-
-- **MangaDex URL**: Full link to the manga. (e.g., `https://mangadex.org/title/8015...`)
-- **Folder name**: Folder where all deliveries will be organized. (e.g., `Berserk`)
-- **Language**: Defaults to Latin Spanish (`es-la`). Press Enter to confirm.
-- **Volume or Chapter**: Type the letter for the mode you want to download. (`v` or `c`)
-- **Download range**: Set start and end numbers (e.g., to download a single volume, answer `25` to both questions).
-
-### CLI Arguments (Advanced)
-
-Pass all parameters directly without going through the interactive assistant:
-
-```bash
-python md2kindle.py <URL> [options]
-```
-
-| Argument | Description | Example |
+| Argument | Flag | Example |
 | :--- | :--- | :--- |
-| `url` | MangaDex manga URL | `https://mangadex.org/title/8015...` |
-| `--title` | Output folder name | `--title "Berserk"` |
-| `--lang` | Download language | `--lang es-la` |
-| `--mode` | `v` (volume) or `c` (chapter) | `--mode v` |
-| `--start` | Starting number | `--start 1` |
-| `--end` | Ending number (default = `--start`) | `--end 5` |
-| `--skip-oneshots` | Skip Oneshot chapters | `--skip-oneshots` |
-| `--telegram` | Send result to Telegram | `--telegram` |
-| `--r2` | Upload to R2 and send link | `--r2` |
-| `--silent` | Reduce log verbosity | `--silent` |
-
-**Full example** — Download volumes 1 through 5 in Spanish and upload to R2:
-
-```bash
-python md2kindle.py https://mangadex.org/title/801513ba-a712-498c-8f57-cae55b38cc92 \
-  --mode v --start 1 --end 5 --lang es-la \
-  --skip-oneshots --r2
-```
-
-**Alternative** — Send file directly via Telegram (files under 50MB):
-
-```bash
-python md2kindle.py https://mangadex.org/title/801513ba-a712-498c-8f57-cae55b38cc92 \
-  --mode v --start 1 --end 5 --lang es-la \
-  --skip-oneshots --telegram
-```
-
-> [!NOTE]
-> The script analyzes the volume and downloads missing chapters using a granular fallback:`es-la → en → es`.
+| **URL** | (First arg) | `https://mangadex.org/title/...` |
+| **Mode** | `--mode` | `v` (volume) or `c` (chapter) |
+| **Range** | `--start`, `--end` | `--start 1 --end 5` |
+| **Language** | `--lang` | `--lang es-la` |
+| **Telegram** | `--telegram` | Direct delivery via direct upload or ffsend |
+| **Cloud R2** | `--r2` | Upload to Cloudflare and send link to Telegram bot |
+| **Silent** | `--silent` | Minimize log output |
 
 ---
 
-## ☁️ GitHub Actions Automation
+## ☁️ Cloud Automation
 
-If you prefer not to keep Python installed on your machine, you can use the GitHub Actions pipeline.
+### GitHub Actions
 
-### 1. Push the Repository to GitHub
+1. **Fork** this repo.
+2. **Add Secrets**: Go to `Settings > Secrets > Actions` and add your `.env` variables.
+3. **Run**: Use the `Actions` tab to trigger the **Manga Pipeline** manually.
 
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/your-user/md2kindle.git
-git push -u origin main
-```
+### Telegram Bot (Serverless)
 
-### 2. Configure GitHub Secrets
+Trigger downloads by chatting with your bot:
 
-For the Telegram bot to work, add your credentials:
-
-1. In your GitHub repository, go to **Settings → Secrets and variables → Actions**.
-2. Create two secrets:
-
-| Secret             | Value                                     |
-| ------------------ | ----------------------------------------- |
-| `TELEGRAM_TOKEN`   | Your Telegram bot token                   |
-| `TELEGRAM_CHAT_ID` | The chat ID where you'll receive files    |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID (shared by R2 and D1) |
-| `R2_ACCESS_KEY_ID` | R2 API Access Key ID                      |
-| `R2_SECRET_ACCESS_KEY`| R2 API Secret Access Key               |
-| `R2_BUCKET_NAME`   | Name of your R2 bucket                    |
-| `D1_DATABASE_ID`   | D1 Database ID                            |
-| `D1_API_TOKEN`     | Cloudflare API Token for D1               |
-
-#### How to get your Telegram credentials
-
-1. **TELEGRAM_TOKEN**:
-   - Talk to [@BotFather](https://t.me/BotFather) on Telegram.
-   - Send `/newbot` and follow the instructions.
-   - BotFather will give you a token like: `123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ`
-   - That's your `TELEGRAM_TOKEN`.
-
-2. **TELEGRAM_CHAT_ID**:
-   - Talk to [@userinfobot](https://t.me/userinfobot) or [@getidsbot](https://t.me/getidsbot).
-   - The bot will reply with your **Chat ID** (e.g., `123456789`).
-
-> [!NOTE]
-> If you're the only user, the Chat ID is usually your personal **User ID** (a long number).
-
-### 3. Run the Workflow
-
-1. Go to the **Actions** tab in your repository.
-2. Select the workflow: **Manga Pipeline (R2 & Telegram)**.
-3. Click **Run workflow** and enter:
-   - **MangaDex URL** (e.g., `https://mangadex.org/title/8015...`)
-   - **Mode**: `v` (volume) or `c` (chapter)
-   - **Start and end volume/chapter number**
-   - **Language**: `es-la`, `en`, `es`, etc.
-   - **Skip Oneshots**: `true` or `false`
-4. Click **Run** and watch the process in real time.
-
-### 4. Receive the File
-
-- With **R2 enabled** (default): You'll receive a clean **download link** via Telegram, valid for 7 days. Files are automatically deleted from the bucket after 7 days (in sync with the link expiry).
-- With **R2 disabled** (or if R2 upload fails): Automatically falls back to the legacy method — files under 50MB are sent directly via Telegram; larger files use ffsend E2EE links.
-
-> [!TIP]
-> R2 delivery is recommended for all file sizes — it's faster, has no size limit, and doesn't depend on Telegram's upload restrictions.
+1. Deploy the Cloudflare Worker in `.github/workers/telegram-bot.js`.
+2. Send: `/manga <url> v 1 5 es-la`
 
 ---
 
-## 🤖 Telegram Bot — Command Activation
+## 🧪 Development & Verification
 
-Instead of manually opening GitHub Actions, you can send a message to your Telegram bot and the workflow triggers automatically. This is implemented with a serverless **Cloudflare Worker** (free).
+### Local Verification
 
-### Architecture
-
-```text
-You → /manga <url> → Telegram → Cloudflare Worker → GitHub API → Actions → .mobi → Telegram → You
-```
-
-### Prerequisites
-
-- A [Cloudflare](https://cloudflare.com) account (free)
-- A Telegram bot created with [@BotFather](https://t.me/BotFather)
-- A GitHub Personal Access Token (Classic) with `workflow` scope
-
-### 1. Create the Cloudflare Worker
-
-1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create**.
-2. Choose **Hello World Worker**, give it a name (e.g., `md2kindle-bot`) and click **Deploy**.
-3. Click **Edit code**, clear the content, and paste the code from `.github/workers/telegram-bot.js`.
-4. Click **Deploy**.
-
-### 2. Configure Worker Secrets
-
-In your Worker → **Settings** → **Variables and Secrets** → **Add**:
-
-| Secret | Value |
-| --- | --- |
-| `TELEGRAM_TOKEN` | Your bot token (BotFather) |
-| `TELEGRAM_CHAT_ID` | Your personal Chat ID (get it from [@userinfobot](https://t.me/userinfobot)) |
-| `GITHUB_PAT` | GitHub Classic Token with `workflow` scope |
-
-> [!WARNING]
-> Use a **Classic Token**, not Fine-grained. Fine-grained tokens return 403 on the `workflow_dispatch` endpoint unless you explicitly configure per-repository permissions.
-
-### 3. Create the GitHub PAT
-
-1. Go to [github.com/settings/tokens/new](https://github.com/settings/tokens/new) (Classic).
-2. Check only the scope: ✅ `workflow`.
-3. Generate the token and paste it into the `GITHUB_PAT` secret.
-
-### 4. Register the Telegram Webhook (one time only)
-
-Open this URL in your browser (replace `<YOUR_TOKEN>` and `<YOUR_WORKER_URL>`):
-
-```text
-https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook?url=<YOUR_WORKER_URL>
-```
-
-If everything is correct you'll see:
-
-```json
-{"ok":true,"result":true,"description":"Webhook was set"}
-```
-
-### Usage
-
-```text
-/manga <url> <mode> <start> [end] [lang]
-```
-
-| Parameter | Description | Default |
-| --- | --- | --- |
-| `url` | MangaDex manga URL | — |
-| `mode` | `v` (volume) or `c` (chapter) | `v` |
-| `start` | Starting number | `1` |
-| `end` | Ending number (optional) | same as start |
-| `lang` | `es-la`, `en`, `es`, etc. | `es-la` |
-
-**Examples:**
-
-```text
-/manga https://mangadex.org/title/xxx v 1
-/manga https://mangadex.org/title/xxx v 1 5
-/manga https://mangadex.org/title/xxx c 10 20 en
-```
-
-> [!NOTE]
-> The bot only responds to your Chat ID. Any other user is silently ignored.
-> The Cloudflare Workers free plan includes 100,000 requests/day — more than enough for personal use.
+- [ ] `pip install -e .[dev]`
+- [ ] `.venv\Scripts\python.exe -m pytest -v` (Should be 27/27 PASS)
+- [ ] `python md2kindle.py --help`
 
 ---
 
-## 🧪 Development
+## 💡 Troubleshooting
 
-If you want to contribute or modify the project:
-
-```bash
-# Create virtual environment and install in editable mode
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e .
-
-# Run tests
-.\.venv\Scripts\python.exe -m pytest tests/ -v
-
-# Verify CLI
-.\.venv\Scripts\python.exe -m md2kindle --help
-```
-
----
-
-## 💡 Additional Notes & Troubleshooting
-
-- **Storage**: If you're running low on disk space, set `DELETE_CBZ_AFTER_CONVERSION = True` in `md2kindle/config.py` to automatically delete the raw `.cbz` files after conversion.
-- **Script fails just before converting**: This usually happens when KCC can't find the `kindlegen` component. Make sure you've installed **Kindle Previewer** and opened it at least once so it registers its internal binaries.
+- **Telegram file too big?** Use the `--r2` flag for Cloudflare delivery.
