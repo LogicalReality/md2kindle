@@ -9,6 +9,7 @@ license = "MIT"
 dependencies = [
     "requests",
     "mangadex-downloader>=1.0.0",
+    "chardet>=3.0.2,<6.0.0",
     "python-dotenv",
     "boto3",
 ]
@@ -24,6 +25,10 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["md2kindle*"]
+
+[tool.pytest.ini_options]
+addopts = "--basetemp=.test_tmp -p no:cacheprovider"
+testpaths = ["tests"]
 
 [build-system]
 requires = ["setuptools>=61.0"]

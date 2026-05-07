@@ -9,28 +9,9 @@ import shutil
 import zipfile
 
 from md2kindle.config import MANGADEX_DL_PATH
+from md2kindle.ranges import parse_range
 
 logger = logging.getLogger(__name__)
-
-
-def parse_range(start, end):
-    """Convierte un rango de strings en una lista. Soporta decimales (25.5) y alfanuméricos (S1)"""
-    try:
-        s = float(start)
-        e = float(end)
-        if s == e:
-            return [start]
-
-        # Generamos lista de enteros si son exactos, de lo contrario solo retornamos los extremos
-        if s.is_integer() and e.is_integer():
-            return [str(i) for i in range(int(s), int(e) + 1)]
-        else:
-            return [start, end]
-    except ValueError:
-        # Si no es un número (ej. "S1", "Extra"), devolvemos como literal.
-        if start == end:
-            return [start]
-        return [start]
 
 
 def audit_and_cleanup(

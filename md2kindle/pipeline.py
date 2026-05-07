@@ -4,19 +4,14 @@ Extraído de cli.py para separar la lógica de ejecución del parsing de argumen
 cli.py construye PipelineParams → pipeline.run() ejecuta.
 """
 
-import html
 import logging
 import os
-import sys
 import glob
 import shutil
 
 from md2kindle.config import OUTPUT_FOLDER_MANGA, OUTPUT_FOLDER_KCC
 from md2kindle.converter import convert_with_kcc
-from md2kindle.delivery import send_to_telegram, send_to_usb
-from md2kindle.delivery.d1 import log_download
-from md2kindle.delivery.r2 import send_to_r2
-from md2kindle.delivery.telegram import send_message
+from md2kindle.delivery.service import deliver_files
 from md2kindle.mangadex import (
     get_manga_aggregate,
     build_chapter_lang_map,
@@ -25,82 +20,9 @@ from md2kindle.mangadex import (
     download_volume_mixed,
     audit_and_cleanup,
 )
-from md2kindle.models import PipelineParams, format_manga_title
+from md2kindle.models import PipelineParams
 
 logger = logging.getLogger(__name__)
-
-
-def deliver_batch(mobi_files: list[str], params: PipelineParams) -> None:
-    """Entrega un lote de archivos. Intenta USB primero; si falla, ofrece Telegram una sola vez."""
-    if not mobi_files:
-        return
-
-    # 1. Intentar USB para todos
-    usb_detected = False
-    for mobi_file in mobi_files:
-        if send_to_usb(mobi_file, params.title):
-            usb_detected = True
-            manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
-            log_download(manga, vol, params.lang, mobi_file, "usb")
-
-    # 2. Si se pidió R2 por flag, subir y enviar link por Telegram
-    if params.r2:
-        for mobi_file in mobi_files:
-            manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
-            url = send_to_r2(mobi_file, manga, vol)
-            if url:
-                size_mb = os.path.getsize(mobi_file) / (1024 * 1024)
-                safe_manga = html.escape(manga)
-                safe_vol = html.escape(vol)
-                safe_url = html.escape(url)
-                msg_html = (
-                    f"📖 <b>{safe_manga}</b> - {safe_vol}\n\n"
-                    f"🔒 Cloudflare R2 (archivo de {size_mb:.2f} MB). Expira en 7d:\n\n"
-                    f"🔗 <a href='{safe_url}'>DESCARGAR AHORA</a>"
-                )
-                send_message(msg_html, parse_mode="HTML")
-                log_download(manga, vol, params.lang, mobi_file, "r2")
-            else:
-                logger.warning(f"Fallo al subir {mobi_file} a R2. Haciendo fallback a Telegram clásico.")
-                send_to_telegram(mobi_file)
-                log_download(manga, vol, params.lang, mobi_file, "telegram")
-        return
-
-    # 3. Si se pidió Telegram por flag (envío directo del archivo)
-    if params.telegram:
-        for mobi_file in mobi_files:
-            send_to_telegram(mobi_file)
-            manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
-            log_download(manga, vol, params.lang, mobi_file, "telegram")
-        return
-
-    # 4. Si NO se detectó Kindle y es interactivo, preguntar UNA vez por todo el lote
-    if not usb_detected:
-        is_interactive = len(sys.argv) <= 1
-        if is_interactive:
-            print(f"\n> Se generaron {len(mobi_files)} archivos pero no se detectó un Kindle.")
-            fallback = input(f"> ¿Deseas subir el lote ({len(mobi_files)} archivos) a Cloudflare R2 y enviar el link por Telegram? [S/n/t] ('t' para archivo directo) [Enter para 'S']: ").strip().lower()
-            if fallback == 't':
-                for mobi_file in mobi_files:
-                    send_to_telegram(mobi_file)
-                    manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
-                    log_download(manga, vol, params.lang, mobi_file, "telegram")
-            elif fallback != 'n':
-                for mobi_file in mobi_files:
-                    manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
-                    url = send_to_r2(mobi_file, manga, vol)
-                    if url:
-                        size_mb = os.path.getsize(mobi_file) / (1024 * 1024)
-                        safe_manga = html.escape(manga)
-                        safe_vol = html.escape(vol)
-                        safe_url = html.escape(url)
-                        msg_html = (
-                            f"📖 <b>{safe_manga}</b> - {safe_vol}\n\n"
-                            f"🔒 Cloudflare R2 (archivo de {size_mb:.2f} MB). Expira en 7d:\n\n"
-                            f"🔗 <a href='{safe_url}'>DESCARGAR AHORA</a>"
-                        )
-                        send_message(msg_html, parse_mode="HTML")
-                        log_download(manga, vol, params.lang, mobi_file, "r2")
 
 
 
@@ -288,7 +210,7 @@ def run(params: PipelineParams) -> None:
         generated = process_chapter_flow(params, base_path, aggregate_data)
         all_mobi_files.extend(generated)
 
-    deliver_batch(all_mobi_files, params)
+    deliver_files(all_mobi_files, params)
 
     logger.info("=========================================")
     logger.info(" Proceso Finalizado. Archivos generados en:\n %s", OUTPUT_FOLDER_KCC)
