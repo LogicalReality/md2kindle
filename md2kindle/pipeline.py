@@ -9,7 +9,7 @@ import os
 import glob
 import shutil
 
-from md2kindle.config import OUTPUT_FOLDER_MANGA, OUTPUT_FOLDER_KCC
+from md2kindle.config import APP_CONFIG, AppConfig
 from md2kindle.converter import convert_with_kcc
 from md2kindle.delivery.service import deliver_files
 from md2kindle.mangadex import (
@@ -25,19 +25,28 @@ from md2kindle.models import PipelineParams
 logger = logging.getLogger(__name__)
 
 
+def _config_kwargs(explicit_config: bool, app_config: AppConfig) -> dict:
+    """Pasa AppConfig solo cuando el caller lo inyectó explícitamente."""
+    return {"app_config": app_config} if explicit_config else {}
+
 
 def process_volume_flow(
     params: PipelineParams, vol: str, base_path: str,
     aggregate_data: dict, fallback_aggregates: dict, lang_priority: list[str],
+    app_config: AppConfig | None = None,
 ) -> list[str]:
     """Procesa un volumen individual: descarga → auditoría → conversión y retorna archivos.
 
     Usa fallback per-chapter: si el idioma principal no tiene todos los capítulos
     del volumen, descarga los faltantes del siguiente idioma en la cadena de prioridad.
     """
+    explicit_config = app_config is not None
+    app_config = app_config or APP_CONFIG
+    config_kwargs = _config_kwargs(explicit_config, app_config)
+
     # --- SALTAR SI YA EXISTE ---
     rel_path = os.path.join(params.title, f"Vol {vol}")
-    expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
+    expected_output_dir = os.path.join(app_config.output_folder_kcc, rel_path)
     mobi_name = f"{params.title} Vol. {vol}.mobi"
     mobi_file = os.path.join(expected_output_dir, mobi_name)
 
@@ -61,9 +70,15 @@ def process_volume_flow(
 
         if is_mixed and chapter_map:
             # Descarga mixta: múltiples idiomas por capítulo
-            if not download_volume_mixed(
-                params.url, folder, chapter_map, params.skip_oneshots, vol=vol
-            ):
+            download_ok = download_volume_mixed(
+                params.url,
+                folder,
+                chapter_map,
+                params.skip_oneshots,
+                vol=vol,
+                **config_kwargs,
+            )
+            if not download_ok:
                 return []
         else:
             # Descarga normal: un solo idioma
@@ -80,9 +95,17 @@ def process_volume_flow(
                         )
                         download_lang = resolved_lang
 
-            if not download_manga(
-                params.url, folder, download_lang, "v", vol, vol, params.skip_oneshots,
-            ):
+            download_ok = download_manga(
+                params.url,
+                folder,
+                download_lang,
+                "v",
+                vol,
+                vol,
+                params.skip_oneshots,
+                **config_kwargs,
+            )
+            if not download_ok:
                 return []
 
     # Auditoría (limpia archivos basura si es necesario) y Conversión
@@ -96,15 +119,23 @@ def process_volume_flow(
         shutil.rmtree(folder, ignore_errors=True)
         return []
 
-    mobi_list = convert_with_kcc(folder, params.author, params.title, vol_hint=vol)
+    mobi_list = convert_with_kcc(
+        folder, params.author, params.title, vol_hint=vol, **config_kwargs
+    )
     return mobi_list or []
 
 
 
 def process_chapter_flow(
-    params: PipelineParams, base_path: str, aggregate_data: dict
+    params: PipelineParams,
+    base_path: str,
+    aggregate_data: dict,
+    app_config: AppConfig | None = None,
 ) -> list[str]:
     """Procesa un rango de capítulos: descarga → auditoría → conversión y retorna archivos."""
+    explicit_config = app_config is not None
+    app_config = app_config or APP_CONFIG
+    config_kwargs = _config_kwargs(explicit_config, app_config)
     suffix = f"Cap {params.start}" + (
         f"-{params.end}" if params.start != params.end else ""
     )
@@ -112,7 +143,7 @@ def process_chapter_flow(
 
     # --- SALTAR SI YA EXISTE ---
     rel_path = os.path.join(params.title, suffix)
-    expected_output_dir = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
+    expected_output_dir = os.path.join(app_config.output_folder_kcc, rel_path)
     # El conversor renombra el archivo para incluir el título de la serie
     mobi_name = f"{params.title} {suffix}.mobi"
     mobi_file = os.path.join(expected_output_dir, mobi_name)
@@ -128,7 +159,7 @@ def process_chapter_flow(
         if existing_cbzs:
             logger.info("Archivos CBZ para el rango %s ya presentes. Saltando descarga...", suffix)
         else:
-            if not download_manga(
+            download_ok = download_manga(
                 params.url,
                 folder,
                 params.lang,
@@ -136,7 +167,9 @@ def process_chapter_flow(
                 params.start,
                 params.end,
                 params.skip_oneshots,
-            ):
+                **config_kwargs,
+            )
+            if not download_ok:
                 return []
             
             # Renombrar "All chapters.cbz" a un nombre más descriptivo
@@ -160,16 +193,21 @@ def process_chapter_flow(
             shutil.rmtree(folder, ignore_errors=True)
             return []
 
-        mobi_list = convert_with_kcc(folder, params.author, params.title, vol_hint=suffix)
+        mobi_list = convert_with_kcc(
+            folder, params.author, params.title, vol_hint=suffix, **config_kwargs
+        )
         return mobi_list or []
         
         return []
 
 
 
-def run(params: PipelineParams) -> None:
+def run(params: PipelineParams, app_config: AppConfig | None = None) -> None:
     """Ejecuta el pipeline completo con los parámetros resueltos."""
-    base_path = os.path.join(OUTPUT_FOLDER_MANGA, params.title)
+    explicit_config = app_config is not None
+    app_config = app_config or APP_CONFIG
+    config_kwargs = _config_kwargs(explicit_config, app_config)
+    base_path = os.path.join(app_config.output_folder_manga, params.title)
 
     aggregate_data = {}
     fallback_aggregates = {}
@@ -194,8 +232,13 @@ def run(params: PipelineParams) -> None:
 
         for vol in volumes:
             generated = process_volume_flow(
-                params, vol, base_path,
-                aggregate_data, fallback_aggregates, lang_priority,
+                params,
+                vol,
+                base_path,
+                aggregate_data,
+                fallback_aggregates,
+                lang_priority,
+                **config_kwargs,
             )
             all_mobi_files.extend(generated)
     else:
@@ -207,11 +250,16 @@ def run(params: PipelineParams) -> None:
                     aggregate_data = fallback_aggregates[fb_lang]
                     break
 
-        generated = process_chapter_flow(params, base_path, aggregate_data)
+        generated = process_chapter_flow(
+            params, base_path, aggregate_data, **config_kwargs
+        )
         all_mobi_files.extend(generated)
 
-    deliver_files(all_mobi_files, params)
+    deliver_files(all_mobi_files, params, **config_kwargs)
 
     logger.info("=========================================")
-    logger.info(" Proceso Finalizado. Archivos generados en:\n %s", OUTPUT_FOLDER_KCC)
+    logger.info(
+        " Proceso Finalizado. Archivos generados en:\n %s",
+        app_config.output_folder_kcc,
+    )
     logger.info("=========================================")

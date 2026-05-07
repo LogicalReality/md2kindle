@@ -8,7 +8,7 @@ import re
 import shutil
 import zipfile
 
-from md2kindle.config import MANGADEX_DL_PATH
+from md2kindle.config import APP_CONFIG, AppConfig
 from md2kindle.ranges import parse_range
 
 logger = logging.getLogger(__name__)
@@ -129,7 +129,17 @@ def audit_and_cleanup(
             )
 
 
-def download_manga(url, target_path, lang, mode, start_val, end_val, skip_oneshots):
+def download_manga(
+    url,
+    target_path,
+    lang,
+    mode,
+    start_val,
+    end_val,
+    skip_oneshots,
+    app_config: AppConfig | None = None,
+):
+    app_config = app_config or APP_CONFIG
     if mode == "v":
         save_as = "cbz-volume"
         range_args = ["--start-volume", start_val, "--end-volume", end_val]
@@ -140,7 +150,7 @@ def download_manga(url, target_path, lang, mode, start_val, end_val, skip_onesho
 
     # Construcción dinámica del comando para evitar errores de posición (como el de --language)
     cmd = [
-        MANGADEX_DL_PATH,
+        app_config.binaries.mangadex_dl,
         url,
         "--save-as",
         save_as,
@@ -207,7 +217,14 @@ def _group_contiguous_ranges(chapters):
     return ranges
 
 
-def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots=False, vol=None):
+def download_volume_mixed(
+    url,
+    target_path,
+    chapter_lang_map,
+    skip_oneshots=False,
+    vol=None,
+    app_config: AppConfig | None = None,
+):
     """Descarga un volumen usando múltiples idiomas según el mapa capítulo→idioma.
 
     Agrupa capítulos por idioma, encuentra rangos contiguos dentro de cada grupo,
@@ -222,6 +239,8 @@ def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots=Fals
     Returns:
         True si al menos una descarga fue exitosa.
     """
+    app_config = app_config or APP_CONFIG
+
     # 1. Agrupar capítulos por idioma
     lang_groups = {}
     for chapter, lang in chapter_lang_map.items():
@@ -244,7 +263,7 @@ def download_volume_mixed(url, target_path, chapter_lang_map, skip_oneshots=Fals
         ranges = _group_contiguous_ranges(chapters)
         for start_ch, end_ch in ranges:
             cmd = [
-                MANGADEX_DL_PATH,
+                app_config.binaries.mangadex_dl,
                 url,
                 "--save-as", "raw",
                 "--language", lang,

@@ -6,23 +6,21 @@ import subprocess
 import glob
 import re
 
-from md2kindle.config import (
-    KCC_C2E_PATH,
-    KCC_PROFILE,
-    KCC_FORMAT,
-    KCC_CUSTOM_ARGS,
-    OUTPUT_FOLDER_MANGA,
-    OUTPUT_FOLDER_KCC,
-    DELETE_CBZ_AFTER_CONVERSION,
-    IS_CI,
-)
+from md2kindle.config import APP_CONFIG, AppConfig
 from md2kindle.models import format_manga_title
 
 logger = logging.getLogger(__name__)
 
 
-def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
+def convert_with_kcc(
+    target_path,
+    author="MangaDex",
+    title=None,
+    vol_hint=None,
+    app_config: AppConfig | None = None,
+):
     """Convierte archivos CBZ en Kindle-friendly formats reflejando la estructura original"""
+    app_config = app_config or APP_CONFIG
     search_pattern = os.path.join(target_path, "**", "*.cbz")
     cbz_files = glob.glob(search_pattern, recursive=True)
 
@@ -35,12 +33,12 @@ def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
 
     # Calcular ruta de salida replicando la estructura de carpetas
     try:
-        rel_path = os.path.relpath(target_path, OUTPUT_FOLDER_MANGA)
-        final_output = os.path.join(OUTPUT_FOLDER_KCC, rel_path)
+        rel_path = os.path.relpath(target_path, app_config.output_folder_manga)
+        final_output = os.path.join(app_config.output_folder_kcc, rel_path)
         os.makedirs(final_output, exist_ok=True)
     except Exception as e:
         logger.error("Error al crear carpeta de salida en KCC: %s", e)
-        final_output = OUTPUT_FOLDER_KCC
+        final_output = app_config.output_folder_kcc
         rel_path = target_path
 
     # Extraer nombre de manga y volumen del path para metadatos
@@ -65,11 +63,11 @@ def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
 
         cmd = (
             [
-                KCC_C2E_PATH,
+                app_config.binaries.kcc_c2e,
                 "-p",
-                KCC_PROFILE,
+                app_config.kcc_profile,
                 "-f",
-                KCC_FORMAT,
+                app_config.kcc_format,
                 "-o",
                 final_output,
                 "-a",
@@ -77,7 +75,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
                 "-t",
                 mobi_title,  # Inyección del título completo
             ]
-            + KCC_CUSTOM_ARGS
+            + app_config.kcc_custom_args
             + [cbz_file]
         )
 
@@ -85,7 +83,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
             logger.info("Guardando en: %s", final_output)
             logger.debug("Comando KCC: %s", cmd)
             result = subprocess.run(
-                cmd, stderr=subprocess.DEVNULL if IS_CI else subprocess.PIPE
+                cmd, stderr=subprocess.DEVNULL if app_config.is_ci else subprocess.PIPE
             )
             if result.returncode == 0:
                 # Localizar el archivo generado (.mobi)
@@ -93,7 +91,9 @@ def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
                 mobi_file = os.path.join(final_output, filename_no_ext + ".mobi")
                 if os.path.exists(mobi_file):
                     # Renombrar archivo con título completo
-                    manga, vol = format_manga_title(mobi_file, OUTPUT_FOLDER_KCC)
+                    manga, vol = format_manga_title(
+                        mobi_file, app_config.output_folder_kcc
+                    )
                     # Si format_manga_title no pudo extraer "Vol X", usar el hint
                     if vol_hint and not re.search(r"Vol\.?\s*\d+", vol, re.IGNORECASE):
                         if str(vol_hint).startswith("Cap") or str(vol_hint).startswith("Vol"):
@@ -107,7 +107,7 @@ def convert_with_kcc(target_path, author="MangaDex", title=None, vol_hint=None):
                         mobi_file = new_path
                     generated_files.append(mobi_file)
 
-                if DELETE_CBZ_AFTER_CONVERSION:
+                if app_config.delete_cbz_after_conversion:
                     os.remove(cbz_file)
         except Exception as e:
             logger.error("Excepción al ejecutar KCC: %s", e)

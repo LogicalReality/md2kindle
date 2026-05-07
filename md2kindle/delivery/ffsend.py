@@ -7,12 +7,14 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 
-from md2kindle.config import FFSEND_PATH
+from md2kindle.config import APP_CONFIG, AppConfig
 
-def upload_to_ffsend(file_path):
+
+def upload_to_ffsend(file_path, app_config: AppConfig | None = None):
     """Sube un archivo a ffsend (Firefox Send) - Encriptación de Extremo a Extremo"""
+    app_config = app_config or APP_CONFIG
     # Verificamos si ffsend está instalado en el sistema o en la carpeta bin/
-    ffsend_bin = FFSEND_PATH
+    ffsend_bin = app_config.binaries.ffsend
     if ffsend_bin == "ffsend" and not shutil.which("ffsend"):
         ffsend_bin = None
 

@@ -5,7 +5,7 @@ import os
 import requests
 
 from md2kindle.models import format_manga_title
-from md2kindle.config import OUTPUT_FOLDER_KCC
+from md2kindle.config import APP_CONFIG, AppConfig
 from md2kindle.delivery.ffsend import upload_to_ffsend
 
 logger = logging.getLogger(__name__)
@@ -39,8 +39,9 @@ def send_message(text: str, parse_mode: str = None) -> bool:
         return False
 
 
-def send_to_telegram(file_path):
+def send_to_telegram(file_path, app_config: AppConfig | None = None):
     """Envía el archivo generado a un chat de Telegram usando el Bot API o ffsend si es pesado"""
+    app_config = app_config or APP_CONFIG
     token = os.environ.get("TELEGRAM_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
 
@@ -60,10 +61,10 @@ def send_to_telegram(file_path):
             file_size / (1024 * 1024),
         )
         # Método único de alta privacidad: ffsend (E2EE)
-        link = upload_to_ffsend(file_path)
+        link = upload_to_ffsend(file_path, app_config=app_config)
 
         if link:
-            manga, vol = format_manga_title(file_path, OUTPUT_FOLDER_KCC)
+            manga, vol = format_manga_title(file_path, app_config.output_folder_kcc)
             size_str = f"{file_size / (1024 * 1024):.2f} MB"
             msg = f"📖 **{manga}** - {vol}\n\n🔒 Enlace seguro (archivo de {size_str}). Expira en 12h:\n\n🔗 [DESCARGAR AHORA]({link})"
             url_msg = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -85,7 +86,7 @@ def send_to_telegram(file_path):
     url = f"https://api.telegram.org/bot{token}/sendDocument"
 
     try:
-        manga, vol = format_manga_title(file_path, OUTPUT_FOLDER_KCC)
+        manga, vol = format_manga_title(file_path, app_config.output_folder_kcc)
         with open(file_path, "rb") as f:
             files = {"document": f}
             data = {
@@ -101,9 +102,9 @@ def send_to_telegram(file_path):
             logger.warning(
                 "Telegram rechazó el archivo por tamaño (413). Reintentando con Bóveda Cifrada..."
             )
-            link = upload_to_ffsend(file_path)
+            link = upload_to_ffsend(file_path, app_config=app_config)
             if link:
-                manga, vol = format_manga_title(file_path, OUTPUT_FOLDER_KCC)
+                manga, vol = format_manga_title(file_path, app_config.output_folder_kcc)
                 msg = f"📖 **{manga}** - {vol}\n\n🔒 Enlace seguro:\n{link}"
                 url_msg = f"https://api.telegram.org/bot{token}/sendMessage"
                 requests.post(url_msg, data={"chat_id": chat_id, "text": msg})
