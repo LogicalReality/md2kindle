@@ -1,23 +1,9 @@
-"""Utilities for parsing manga volume/chapter ranges."""
+"""Compatibility shim for `md2kindle.utils.ranges`."""
 
+from importlib import import_module
+import sys
 
-def parse_range(start, end):
-    """Convierte un rango de strings en una lista.
-
-    Soporta decimales (25.5) y alfanuméricos (S1).
-    """
-    try:
-        s = float(start)
-        e = float(end)
-        if s == e:
-            return [start]
-
-        # Generamos lista de enteros si son exactos; si no, retornamos extremos.
-        if s.is_integer() and e.is_integer():
-            return [str(i) for i in range(int(s), int(e) + 1)]
-        return [start, end]
-    except ValueError:
-        # Si no es un número (ej. "S1", "Extra"), devolvemos como literal.
-        if start == end:
-            return [start]
-        return [start]
+_shim_name = __name__
+_module = import_module("md2kindle.utils.ranges")
+sys.modules[_shim_name] = _module
+globals().update(_module.__dict__)
