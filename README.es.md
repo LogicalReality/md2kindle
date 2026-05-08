@@ -109,9 +109,9 @@ python md2kindle.py <URL> [OPCIONES]
 
 Dispara descargas chateando con tu bot:
 
-1. Configura en GitHub Actions los secrets `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID`.
+1. Conecta el Worker al repo desde Cloudflare Workers & Pages.
 2. Configura en Cloudflare Worker los secrets `TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID` y `GITHUB_PAT`.
-3. Haz push a `main`; `.github/workflows/deploy-telegram-worker.yml` despliega `.github/workers/telegram-bot.js`.
+3. Haz push a `main`; Cloudflare despliega `.github/workers/telegram-bot.js` usando `wrangler.jsonc`.
 4. Configura el webhook de Telegram apuntando a la URL del Worker.
 5. Envía: `/manga <url> v 1 5 es-la`
 
