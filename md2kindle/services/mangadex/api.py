@@ -6,7 +6,7 @@ import json
 import urllib.request
 import urllib.parse
 
-from md2kindle.config import sanitize_filename
+from md2kindle.core.config import sanitize_filename
 
 logger = logging.getLogger(__name__)
 

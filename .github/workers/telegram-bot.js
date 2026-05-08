@@ -20,7 +20,7 @@
 
 const GITHUB_OWNER = "LogicalReality";
 const GITHUB_REPO  = "md2kindle";
-const GITHUB_WORKFLOW = "kindle-delivery.yml";
+const GITHUB_WORKFLOW = "manga-pipeline.yml";
 const GITHUB_REF  = "main";
 
 export default {
@@ -84,13 +84,14 @@ export default {
           Authorization: `Bearer ${env.GITHUB_PAT}`,
           Accept: "application/vnd.github+json",
           "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2022-11-28",
           "User-Agent": "md2kindle-telegram-bot",
         },
         body: JSON.stringify({ ref: GITHUB_REF, inputs }),
       }
     );
 
-    if (ghRes.status === 204) {
+    if (ghRes.status === 200 || ghRes.status === 204) {
       const rangeText = end ? ` al ${end}` : "";
       const reply = [
         `⚙️ *Workflow iniciado*`,

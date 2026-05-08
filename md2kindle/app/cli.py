@@ -10,16 +10,16 @@ import sys
 import argparse
 import shutil
 
-from md2kindle.models import PipelineParams
-from md2kindle.config import (
+from md2kindle.core.models import PipelineParams
+from md2kindle.core.config import (
     clear_screen,
     DEFAULT_LANGUAGE,
     MANGADEX_DL_PATH,
     KCC_C2E_PATH,
 )
-from md2kindle.mangadex import get_manga_title_options
-from md2kindle.log_config import setup_logging
-from md2kindle import pipeline
+from md2kindle.services.mangadex import get_manga_title_options
+from md2kindle.core.logging import setup_logging
+from md2kindle.app import pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -192,3 +192,4 @@ def main():
     setup_logging(silent=params.silent)
 
     pipeline.run(params)
+
