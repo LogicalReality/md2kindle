@@ -26,10 +26,6 @@ dev = [
 where = ["."]
 include = ["md2kindle*"]
 
-[tool.pytest.ini_options]
-addopts = "--basetemp=.test_tmp -p no:cacheprovider"
-testpaths = ["tests"]
-
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
