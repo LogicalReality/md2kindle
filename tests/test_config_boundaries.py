@@ -1,5 +1,5 @@
-from md2kindle.config import AppConfig, load_config
-from md2kindle.infrastructure.binaries import find_binary
+from md2kindle.core.config import AppConfig, load_config
+from md2kindle.core.config.binaries import find_binary
 
 
 def test_find_binary_prefers_highest_sorted_match(monkeypatch):

@@ -119,7 +119,7 @@ Dispara descargas chateando con tu bot:
 ### Verificación Local
 
 - [ ] `pip install -e .[dev]`
-- [ ] `.venv\Scripts\python.exe -m pytest -v` (Debería dar 27/27 PASS)
+- [ ] `.venv\Scripts\python.exe -m pytest -v -p no:cacheprovider` (Debería dar 29/29 PASS)
 - [ ] `python md2kindle.py --help`
 
 ---

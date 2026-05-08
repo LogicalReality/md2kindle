@@ -6,19 +6,19 @@ Esta guía explica las "complejidades" del proyecto de forma sencilla. Si te per
 
 ## 1. El Gran Flujo (El Pipeline) 🎼
 
-`md2kindle` no es un solo script, es una **fábrica**. Todo pasa por `pipeline.py`, que coordina tres estaciones de trabajo:
+`md2kindle` no es un solo script, es una **fábrica**. Todo pasa por `app/pipeline.py`, que coordina tres estaciones de trabajo:
 
 | Estación | Archivo Responsable | ¿Qué hace? |
 | :--- | :--- | :--- |
-| **1. La Mina** | `mangadex/downloader.py` | Busca el manga, gestiona idiomas y descarga imágenes en `.cbz`. |
-| **2. La Forja** | `converter.py` | Llama a KCC para transformar fotos en un libro que el Kindle entienda. |
-| **3. El Correo** | `delivery/service.py` | Decide si el archivo va por Telegram, R2 o ffsend según el tamaño. |
+| **1. La Mina** | `services/mangadex/downloader.py` | Busca el manga, gestiona idiomas y descarga imágenes en `.cbz`. |
+| **2. La Forja** | `services/converter/service.py` | Llama a KCC para transformar fotos en un libro que el Kindle entienda. |
+| **3. El Correo** | `services/delivery/service.py` | Decide si el archivo va por Telegram, R2 o ffsend según el tamaño. |
 
 ---
 
 ## 2. El Cerebro: `AppConfig` ⚙️
 
-Para que la fábrica funcione, necesita instrucciones claras. Antes estaban sueltas, ahora viven en un objeto llamado `AppConfig` (en `config.py`):
+Para que la fábrica funcione, necesita instrucciones claras. Antes estaban sueltas, ahora viven en un objeto llamado `AppConfig` (en `core/config/settings.py`):
 
 - **Inyectable**: Podemos crear una configuración "de mentira" para tests sin romper la configuración real.
 - **Inmutable**: Una vez que arranca, nadie puede cambiar la ruta de descarga a mitad de camino.
@@ -61,9 +61,9 @@ Si corrés esto en entornos restringidos (como este chat o GitHub Actions):
 
 ## 6. ¿Dónde toco si quiero...? 🛠️
 
-- **¿Cambiar cómo se ve el mobi?** -> `config.py` (ajusta `KCC_PROFILE` o `KCC_CUSTOM_ARGS`).
-- **¿Agregar un nuevo método de envío?** -> Crea un archivo en `delivery/` y registralo en `delivery/service.py`.
-- **¿Mejorar la descarga?** -> `mangadex/downloader.py`.
+- **¿Cambiar cómo se ve el mobi?** -> `core/config/settings.py` (ajusta `KCC_PROFILE` o `KCC_CUSTOM_ARGS`).
+- **¿Agregar un nuevo método de envío?** -> Crea un archivo en `services/delivery/` y registralo en `services/delivery/service.py`.
+- **¿Mejorar la descarga?** -> `services/mangadex/downloader.py`.
 
 ---
 

@@ -17,32 +17,39 @@ run.bat                                # Windows interactive launcher
 ## Architecture
 
 ```text
-md2kindle.py          # thin entrypoint → md2kindle.cli:main
+md2kindle.py          # thin entrypoint → md2kindle.app.cli:main
 md2kindle/
-  cli.py              # argparse + interactive mode → PipelineParams → pipeline.run()
-  pipeline.py         # orchestrates: download → audit → convert → deliver
-  config.py           # AppConfig dataclass, binary resolution, .env loading
-  models.py           # PipelineParams, format_manga_title()
-  converter.py        # CBZ → MOBI via kcc_c2e subprocess
-  ranges.py           # volume/chapter range parsing (supports decimals, alphanumerics)
-  log_config.py       # centralized logging (--silent = WARNING level)
-  mangadex/
-    api.py            # MangaDex REST API calls (title lookup, aggregate structure)
-    downloader.py     # mangadex-dl subprocess, audit_and_cleanup, mixed-lang download
-  delivery/
-    service.py        # delivery orchestration: USB → R2 → Telegram → interactive fallback
-    telegram.py       # Telegram Bot API (direct upload or ffsend for >45MB)
-    r2.py             # Cloudflare R2 via boto3 (presigned URLs, 7-day expiry)
-    usb.py            # Kindle USB detection (Windows only: MTP + mass storage)
-    ffsend.py         # E2EE upload via ffsend binary (send.vis.ee)
-    d1.py             # optional download history logging to Cloudflare D1
-  infrastructure/
-    binaries.py       # binary resolution: bin/ folder → system PATH → venv
+  app/
+    cli.py            # argparse + interactive mode → PipelineParams → pipeline.run()
+    pipeline.py       # orchestrates: download → audit → convert → deliver
+  core/
+    config/
+      settings.py     # AppConfig dataclass, .env loading, constants
+      binaries.py     # binary resolution: bin/ folder → system PATH → venv
+    models/
+      pipeline.py     # PipelineParams, format_manga_title()
+    logging/
+      setup.py        # centralized logging (--silent = WARNING level)
+  services/
+    converter/
+      service.py      # CBZ → MOBI via kcc_c2e subprocess
+    mangadex/
+      api.py          # MangaDex REST API calls (title lookup, aggregate structure)
+      downloader.py   # mangadex-dl subprocess, audit_and_cleanup, mixed-lang download
+    delivery/
+      service.py      # delivery orchestration: USB → R2 → Telegram → interactive fallback
+      telegram.py     # Telegram Bot API (direct upload or ffsend for >45MB)
+      r2.py           # Cloudflare R2 via boto3 (presigned URLs, 7-day expiry)
+      usb.py          # Kindle USB detection (Windows only: MTP + mass storage)
+      ffsend.py       # E2EE upload via ffsend binary (send.vis.ee)
+      d1.py           # optional download history logging to Cloudflare D1
+  utils/
+    ranges.py         # volume/chapter range parsing (supports decimals, alphanumerics)
 ```
 
 ## Key Conventions
 
-- **Config centralization**: all settings in `md2kindle/config.py` via `AppConfig`. Never hardcode paths or values.
+- **Config centralization**: all settings in `md2kindle/core/config/settings.py` via `AppConfig`. Never hardcode paths or values.
 - **Binary detection**: cascading `./bin/` → system PATH → venv. On Windows, prefers local `.exe` files.
 - **Language fallback**: `es-la` → `en` → `es` (per-chapter granularity in volume mode).
 - **KCC profile**: `KO` (Kindle Oasis 2/3 / Paperwhite 12), format `MOBI` (dual MOBI/AZW3).
@@ -52,7 +59,7 @@ md2kindle/
 
 - Always use `.venv\Scripts\python.exe -m pytest` (not bare `pytest`) to avoid PATH issues.
 - USB tests mock `os.name` to `"nt"` since CI may run on Linux.
-- Expected: 27 tests passing.
+- Expected: 29 tests passing.
 
 ## Environment
 

@@ -119,7 +119,7 @@ Trigger downloads by chatting with your bot:
 ### Local Verification
 
 - [ ] `pip install -e .[dev]`
-- [ ] `.venv\Scripts\python.exe -m pytest -v` (Should be 27/27 PASS)
+- [ ] `.venv\Scripts\python.exe -m pytest -v -p no:cacheprovider` (Should be 29/29 PASS)
 - [ ] `python md2kindle.py --help`
 
 ---

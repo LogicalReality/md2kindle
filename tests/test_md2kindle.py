@@ -7,15 +7,13 @@ import importlib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from md2kindle import config
-from md2kindle.mangadex import downloader
-from md2kindle import cli
-from md2kindle.mangadex import api
-from md2kindle import converter
-from md2kindle.delivery import telegram
-from md2kindle import pipeline
-from md2kindle.ranges import parse_range
-from md2kindle.models import PipelineParams
+from md2kindle.app import cli, pipeline
+from md2kindle.core.config import settings as config
+from md2kindle.core.models import PipelineParams
+from md2kindle.services.converter import service as converter
+from md2kindle.services.delivery import telegram
+from md2kindle.services.mangadex import api, downloader
+from md2kindle.utils.ranges import parse_range
 
 
 class TestParseRange:
