@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "md2kindle-telegram-bot",
+  "name": "md2kindlebot",
   "main": ".github/workers/telegram-bot.js",
   "compatibility_date": "2026-05-08",
   "observability": {
