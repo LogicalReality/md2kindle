@@ -109,8 +109,11 @@ python md2kindle.py <URL> [OPTIONS]
 
 Trigger downloads by chatting with your bot:
 
-1. Deploy the Cloudflare Worker in `.github/workers/telegram-bot.js`.
-2. Send: `/manga <url> v 1 5 es-la`
+1. Configure the GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+2. Configure the Cloudflare Worker secrets `TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`, and `GITHUB_PAT`.
+3. Push to `main`; `.github/workflows/deploy-telegram-worker.yml` deploys `.github/workers/telegram-bot.js`.
+4. Configure the Telegram webhook to point at the Worker URL.
+5. Send: `/manga <url> v 1 5 es-la`
 
 ---
 
