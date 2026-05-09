@@ -6,7 +6,7 @@ Un pipeline de automatización para descargar manga desde [MangaDex](https://man
 
 ## Inicio Rápido
 
-1. **Instala los requisitos**: [Python 3.12+](https://www.python.org/downloads/) y descarga los binarios de [kcc_c2e](https://github.com/ciromattia/kcc/releases), [mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases) y [ffsend](https://github.com/timvisee/ffsend/releases) en la carpeta `bin/`.
+1. **Instala los requisitos**: [Python 3.13](https://www.python.org/downloads/) y descarga los binarios de [kcc_c2e](https://github.com/ciromattia/kcc/releases), [mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases) y [ffsend](https://github.com/timvisee/ffsend/releases) en la carpeta `bin/`.
 2. **Configuración**:
 
    ```bash
@@ -50,7 +50,7 @@ python md2kindle.py <URL> [OPCIONES]
 
 ## Checklist
 
-- [ ] Python 3.12+ instalado.
+- [ ] Python 3.13 instalado.
 - [ ] Binarios presentes en `bin/`.
 - [ ] `.env` configurado (si usás funciones cloud).
 
