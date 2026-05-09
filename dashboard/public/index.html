@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>md2kindle | Sentinel Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        
+        <!-- Sidebar / Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="ph-fill ph-book-open"></i>
+                <h1>md2kindle<span>Sentinel</span></h1>
+            </div>
+            <div class="status-badge" id="bot-status">
+                <span class="pulse-dot"></span>
+                <span class="status-text">Online</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            
+            <!-- Hero Stats -->
+            <section class="stats-grid">
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon"><i class="ph-fill ph-books"></i></div>
+                    <div class="stat-info">
+                        <h3>Tomos Entregados</h3>
+                        <p id="stat-total-downloads" class="stat-value loading">--</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon"><i class="ph-fill ph-hard-drives"></i></div>
+                    <div class="stat-info">
+                        <h3>Volumen Procesado</h3>
+                        <p id="stat-total-size" class="stat-value loading">-- GB</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon"><i class="ph-fill ph-calendar-check"></i></div>
+                    <div class="stat-info">
+                        <h3>Última Actividad</h3>
+                        <p id="stat-last-active" class="stat-value loading">--</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section -->
+            <section class="charts-section">
+                <div class="chart-container glass-panel main-chart">
+                    <div class="chart-header">
+                        <h2>Actividad Reciente</h2>
+                        <span class="subtitle">Últimos 30 días</span>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="dailyChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container glass-panel side-chart">
+                    <div class="chart-header">
+                        <h2>Métodos de Entrega</h2>
+                    </div>
+                    <div class="canvas-wrapper donut-wrapper">
+                        <canvas id="methodChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recent Activity Table -->
+            <section class="table-section glass-panel">
+                <div class="section-header">
+                    <h2>Últimas Descargas</h2>
+                    <button class="btn-refresh" onclick="fetchStats()"><i class="ph ph-arrows-clockwise"></i></button>
+                </div>
+                <div class="table-responsive">
+                    <table id="recent-table">
+                        <thead>
+                            <tr>
+                                <th>Manga</th>
+                                <th>Volumen</th>
+                                <th>Idioma</th>
+                                <th>Tamaño</th>
+                                <th>Método</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-tbody">
+                            <!-- Populated by JS -->
+                            <tr><td colspan="6" class="text-center loading-row">Cargando datos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+        </main>
+        
+        <footer>
+            <p>Powered by Cloudflare D1 & Pages</p>
+        </footer>
+    </div>
+
+    <!-- Custom JS -->
+    <script src="script.js"></script>
+</body>
+</html>
