@@ -86,13 +86,14 @@ function renderTable(recentData) {
         const dateStr = date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         
         const tr = document.createElement('tr');
+        tr.classList.add('table-row');
         tr.innerHTML = `
-            <td><strong>${row.manga}</strong></td>
-            <td>Vol. ${row.volume}</td>
-            <td>${row.lang.toUpperCase()}</td>
-            <td>${row.size_mb ? row.size_mb.toFixed(1) + ' MB' : '-'}</td>
-            <td>${getMethodBadge(row.method)}</td>
-            <td>${dateStr}</td>
+            <td class="td-manga"><strong>${row.manga}</strong></td>
+            <td class="td-volume">Vol. ${row.volume}</td>
+            <td class="td-lang">${row.lang.toUpperCase()}</td>
+            <td class="td-size">${row.size_mb ? row.size_mb.toFixed(1) + ' MB' : '-'}</td>
+            <td class="td-method">${getMethodBadge(row.method)}</td>
+            <td class="td-date">${dateStr}</td>
         `;
         tbody.appendChild(tr);
     });

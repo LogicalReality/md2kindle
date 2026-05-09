@@ -223,6 +223,48 @@ body {
     .section-header h2, .chart-header h2 {
         font-size: 1rem;
     }
+
+    /* --- Mobile Table Card Layout --- */
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+
+    thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .table-row {
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .td-manga {
+        grid-column: span 2;
+        font-size: 1rem !important;
+        color: var(--accent-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .td-volume, .td-lang, .td-size, .td-method, .td-date {
+        font-size: 0.75rem !important;
+        padding: 0.25rem 0 !important;
+        border: none !important;
+    }
+
+    .td-method {
+        grid-column: span 2;
+        margin-top: 0.5rem;
+    }
+
+    .td-date {
+        color: var(--text-muted);
+        text-align: right;
+    }
 }
 
 .chart-container {
@@ -260,6 +302,7 @@ body {
 .donut-wrapper {
     display: flex;
     justify-content: center;
+    max-height: 250px; /* Limit donut size */
 }
 
 /* --- Table Section --- */
@@ -301,7 +344,7 @@ body {
 }
 
 .table-responsive {
-    overflow-x: auto;
+    overflow-x: hidden; /* We'll use card layout instead of horizontal scroll */
 }
 
 table {
