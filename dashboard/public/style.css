@@ -41,7 +41,13 @@ body {
     padding: 3rem 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 3rem; /* Increased gap */
+    gap: 3rem; /* Spacing between header and main content */
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem; /* Real spacing between blocks */
 }
 
 /* --- Glassmorphism Utils --- */
@@ -172,6 +178,50 @@ body {
 @media (max-width: 800px) {
     .charts-section {
         grid-template-columns: 1fr;
+    }
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 600px) {
+    .dashboard-container {
+        padding: 1.5rem 1rem;
+        gap: 2rem;
+    }
+
+    .main-content {
+        gap: 2rem;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        padding-bottom: 1.5rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .stat-card {
+        padding: 1.25rem;
+    }
+
+    .stat-value {
+        font-size: 1.75rem;
+    }
+
+    .canvas-wrapper {
+        height: 250px;
+    }
+
+    .chart-container, .table-section {
+        padding: 1.25rem;
+    }
+
+    .section-header h2, .chart-header h2 {
+        font-size: 1rem;
     }
 }
 
