@@ -57,4 +57,4 @@ python md2kindle.py <URL> [OPCIONES]
 ---
 
 > [!TIP]
-> Para una comprensión arquitectónica más profunda, revisá [UNDERSTANDING_MD2KINDLE.md](UNDERSTANDING_MD2KINDLE.md) o [AGENTS.md](AGENTS.md).
+> Para una comprensión arquitectónica más profunda, revisá [docs/UNDERSTANDING_MD2KINDLE.md](docs/UNDERSTANDING_MD2KINDLE.md) o [AGENTS.md](AGENTS.md).
