@@ -15,6 +15,18 @@ Chart.defaults.plugins.tooltip.displayColors = true;
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchStats();
+    
+    // Handle resize to fix chart scaling issues
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            // No need to fetch data again, just re-render if instances exist
+            if (dailyChartInstance || methodChartInstance) {
+                fetchStats(); 
+            }
+        }, 250);
+    });
 });
 
 async function fetchStats() {
