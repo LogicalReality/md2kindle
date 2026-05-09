@@ -302,7 +302,14 @@ body {
 .donut-wrapper {
     display: flex;
     justify-content: center;
-    max-height: 250px; /* Limit donut size */
+    align-items: center;
+    height: 100%;
+}
+
+.donut-wrapper canvas {
+    max-width: 250px !important; /* Force a reasonable size */
+    max-height: 250px !important;
+    margin: 0 auto;
 }
 
 /* --- Table Section --- */

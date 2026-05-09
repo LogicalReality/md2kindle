@@ -200,8 +200,15 @@ function renderMethodChart(methodData) {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { padding: 20, usePointStyle: true }
+                    labels: { 
+                        padding: 20, 
+                        usePointStyle: true,
+                        font: { size: 11 }
+                    }
                 }
+            },
+            layout: {
+                padding: 10
             }
         }
     });
