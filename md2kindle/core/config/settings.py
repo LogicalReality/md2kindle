@@ -35,6 +35,7 @@ class AppConfig:
     kcc_custom_args: list[str] = field(default_factory=lambda: ["-m", "-r", "1", "-u"])
     delete_cbz_after_conversion: bool = False
     default_language: str = "es-la"
+    language_fallback_pool: list[str] = field(default_factory=lambda: ["es-la", "en", "es"])
     skip_oneshots_on_volume_mode: bool = True
     is_ci: bool = False
 

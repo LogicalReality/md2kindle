@@ -197,8 +197,6 @@ def process_chapter_flow(
             folder, params.manga.author, params.manga.title, vol_hint=suffix, **config_kwargs
         )
         return mobi_list or []
-        
-        return []
 
 
 
@@ -211,9 +209,8 @@ def run(params: PipelineContext, app_config: AppConfig | None = None) -> None:
 
     aggregate_data = {}
     fallback_aggregates = {}
-    lang_priority = ["es-la", "en", "es"]
-    if params.manga.lang in lang_priority:
-        lang_priority.remove(params.manga.lang)
+    # La lista de idiomas candidatos viene de la configuración, no del código
+    lang_priority = [lang for lang in app_config.language_fallback_pool if lang != params.manga.lang]
 
     if params.manga.manga_uuid:
         logger.info("Consultando estructura de MangaDex para auditoría y fallbacks...")
@@ -242,16 +239,24 @@ def run(params: PipelineContext, app_config: AppConfig | None = None) -> None:
             )
             all_mobi_files.extend(generated)
     else:
+        # Evitar mutar params: usar variable local para el idioma resuelto
+        resolved_lang = params.manga.lang
         if not aggregate_data:
             for fb_lang in lang_priority:
                 if fb_lang in fallback_aggregates:
                     logger.info("Idioma '%s' sin datos. Usando fallback global: '%s'", params.manga.lang, fb_lang)
-                    params.manga.lang = fb_lang
+                    resolved_lang = fb_lang
                     aggregate_data = fallback_aggregates[fb_lang]
                     break
 
+        # Construir contexto ajustado sin mutar el original
+        chapter_params = params
+        if resolved_lang != params.manga.lang:
+            from dataclasses import replace
+            chapter_params = replace(params, manga=replace(params.manga, lang=resolved_lang))
+
         generated = process_chapter_flow(
-            params, base_path, aggregate_data, **config_kwargs
+            chapter_params, base_path, aggregate_data, **config_kwargs
         )
         all_mobi_files.extend(generated)
 
