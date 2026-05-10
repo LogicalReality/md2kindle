@@ -11,7 +11,7 @@ import shutil
 
 from md2kindle.core.config import APP_CONFIG, AppConfig
 from md2kindle.services.converter import convert_with_kcc
-from md2kindle.services.delivery.service import deliver_files
+from md2kindle.services.delivery.manager import deliver_files
 from md2kindle.services.mangadex import (
     get_manga_aggregate,
     build_chapter_lang_map,

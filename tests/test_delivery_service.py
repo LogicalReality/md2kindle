@@ -1,5 +1,5 @@
 from md2kindle.core.models import PipelineParams
-from md2kindle.services.delivery import service
+from md2kindle.services.delivery import manager as service
 
 
 def make_params(**overrides):
