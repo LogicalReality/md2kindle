@@ -1,6 +1,9 @@
 """Entrega automática a dispositivos Kindle conectados por USB."""
 
 import os
+import sys
+import ntpath
+import posixpath
 import shutil
 import logging
 
@@ -25,22 +28,62 @@ def get_volume_name(drive_letter):
         logger.debug("No se pudo leer nombre de volumen para %s: %s", drive_letter, e)
         return ""
 
+def get_potential_mount_points() -> list[str]:
+    """Devuelve una lista de rutas base donde podrían estar montados discos externos según el OS."""
+    points = []
+    if os.name == 'nt':
+        import string
+        points = [f"{d}:\\" for d in string.ascii_uppercase if os.path.exists(f"{d}:\\")]
+    elif os.name == 'posix':
+        if sys.platform == 'darwin':
+            if os.path.exists("/Volumes"):
+                for d in os.listdir("/Volumes"):
+                    full_path = posixpath.join("/Volumes", d)
+                    if os.path.isdir(full_path):
+                        points.append(full_path)
+        else: # Linux
+            bases = ["/media", "/run/media", "/mnt"]
+            for base in bases:
+                if os.path.exists(base):
+                    for d in os.listdir(base):
+                        # En Linux /media suele tener el usuario adentro, iteramos un nivel más si es el caso
+                        full_path = posixpath.join(base, d)
+                        if os.path.isdir(full_path):
+                            if base in ("/media", "/run/media") and not d.lower() == "kindle":
+                                # Probablemente sea el directorio del usuario, buscar adentro
+                                try:
+                                    for sub in os.listdir(full_path):
+                                        sub_path = posixpath.join(full_path, sub)
+                                        if os.path.isdir(sub_path):
+                                            points.append(sub_path)
+                                except PermissionError:
+                                    pass
+                            points.append(full_path)
+    return points
+
 def get_kindle_drive():
-    """Busca un drive de Kindle conectado en Windows como Almacenamiento Masivo."""
-    if os.name != 'nt':
-        return None
-    
-    import string
-    drives = [f"{d}:\\" for d in string.ascii_uppercase if os.path.exists(f"{d}:\\")]
+    """Busca un drive o directorio de Kindle conectado mediante firma de directorios."""
+    drives = get_potential_mount_points()
     
     for drive in drives:
-        has_documents = os.path.exists(os.path.join(drive, 'documents'))
-        has_system = os.path.exists(os.path.join(drive, 'system'))
+        # Cross-platform path join for checking signatures
+        if os.name == 'posix':
+            has_documents = os.path.exists(posixpath.join(drive, 'documents'))
+            has_system = os.path.exists(posixpath.join(drive, 'system'))
+        else:
+            has_documents = os.path.exists(ntpath.join(drive, 'documents'))
+            has_system = os.path.exists(ntpath.join(drive, 'system'))
         
         if has_documents and has_system:
-            vol_name = get_volume_name(drive).lower()
-            if vol_name == "kindle":
-                return drive
+            if os.name == 'nt':
+                vol_name = get_volume_name(drive).lower()
+                if vol_name == "kindle":
+                    return drive
+            else:
+                # On POSIX, check if the mount point directory name contains 'kindle'
+                dir_name = os.path.basename(drive).lower()
+                if "kindle" in dir_name:
+                    return drive
             
     return None
 
@@ -92,6 +135,10 @@ def send_to_usb(file_path, manga_title):
     if kindle_drive:
         dest_folder = os.path.join(kindle_drive, 'documents', 'Manga', manga_title)
         os.makedirs(dest_folder, exist_ok=True)
+        # Use os.path.basename for the file path, but in tests if file_path is Windows style ("C:\..."), 
+        # os.path.basename might fail on Linux. To be truly robust, we extract filename manually if needed,
+        # but os.path.basename is the correct native approach.
+        # Wait, if file_path is passed from another module, it's already an absolute native path.
         dest_path = os.path.join(dest_folder, os.path.basename(file_path))
         
         logger.info("Kindle detectado en %s (Almacenamiento Masivo). Copiando archivo...", kindle_drive)

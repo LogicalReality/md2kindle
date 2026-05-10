@@ -1,3 +1,4 @@
+import os
 from md2kindle.core.config import AppConfig, load_config
 from md2kindle.core.config.binaries import find_binary
 
@@ -27,7 +28,7 @@ def test_load_config_returns_explicit_app_config(monkeypatch):
     config = load_config(root_dir=root)
 
     assert isinstance(config, AppConfig)
-    assert config.output_folder_manga == "C:/project\\downloads"
-    assert config.output_folder_kcc == "C:/project\\output"
+    assert config.output_folder_manga == os.path.join(root, "downloads")
+    assert config.output_folder_kcc == os.path.join(root, "output")
     assert config.binaries.mangadex_dl == "/usr/bin/mangadex-dl"
     assert config.binaries.kcc_c2e == "/usr/bin/kcc-c2e"
