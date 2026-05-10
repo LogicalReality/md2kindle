@@ -26,6 +26,30 @@ An automation pipeline to download manga from [MangaDex](https://mangadex.org) a
 | **Flexible Delivery** | Direct Telegram, Cloudflare R2 links, or USB (Windows). |
 | **Zero Config** | Auto-detects binaries in `./bin/`, PATH, or venv. |
 
+## How it Works
+
+`md2kindle` operates as a strictly orchestrated pipeline:
+
+```mermaid
+graph LR
+    MD[MangaDex API] -->|Download| DL(Downloader)
+    DL -->|Audit & Audit| AD(Audit Service)
+    AD -->|Convert| CV(KCC Engine)
+    CV -->|Deliver| DV(Delivery Manager)
+    DV -->|USB| K(Kindle Device)
+    DV -->|Cloud| R2(Cloudflare R2)
+    DV -->|Chat| TG(Telegram Bot)
+    
+    style MD fill:#ff6740,stroke:#333,stroke-width:2px
+    style K fill:#2e7d32,stroke:#333,stroke-width:2px,color:#fff
+    style R2 fill:#f48024,stroke:#333,stroke-width:2px
+    style TG fill:#0088cc,stroke:#333,stroke-width:2px,color:#fff
+```
+
+1. **The Source**: Fetches metadata and images from MangaDex.
+2. **The Forge**: Uses Kindle Comic Converter (KCC) to optimize images for e-ink displays.
+3. **The Courier**: Delivers the final `.mobi` file to your preferred destination.
+
 ## Details
 
 ### Requirements

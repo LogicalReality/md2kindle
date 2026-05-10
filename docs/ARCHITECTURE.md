@@ -59,6 +59,16 @@ md2kindle/
     └── ranges.py            # Parsing de rangos de volúmenes/capítulos
 ```
 
+## El Corazón del Dato: `PipelineContext`
+
+La comunicación entre capas no se hace con variables sueltas, sino a través del `PipelineContext` (en `core/models/pipeline.py`). Este objeto contiene:
+
+- **`MangaContext`**: Metadatos del manga (título, autor, UUID).
+- **`DownloadRange`**: Qué capítulos/volúmenes se deben procesar.
+- **`DeliveryOptions`**: Preferencias de envío (Telegram, R2, USB).
+
+Este contexto nace en `cli.py`, se refina en los `workflows` y es consumido por los `services`.
+
 ## Diagrama de Dependencias
 
 ```text

@@ -16,6 +16,9 @@ Python-based automation pipeline that fetches manga from MangaDex, processes it 
 
 ## Architecture Overview
 
+> [!NOTE]
+> Este mapa es una referencia rápida. Para una explicación profunda de las capas y el flujo de datos, consultá [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ```text
 md2kindle.py          # Entrypoint (thin wrapper)
 md2kindle/

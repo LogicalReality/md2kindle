@@ -8,20 +8,24 @@ Esta guía explica las complejidades del proyecto de forma sencilla. Si te perd�
 
 ```mermaid
 graph LR
-    A[MangaDex] --> B(La Mina)
-    B -->|CBZ| C(La Forja)
-    C -->|MOBI| D(El Correo)
-    D --> E{Entrega}
-    E -->|USB| F[Kindle]
-    E -->|R2| G[Cloud Link]
-    E -->|Telegram| H[Bot Chat]
+    A[MangaDex] -->|La Mina| B(CBZ)
+    B -->|La Forja| C(MOBI)
+    C -->|El Correo| D{Entrega}
+    D -->|USB| F[Kindle]
+    D -->|R2| G[Cloud Link]
+    D -->|Telegram| H[Bot Chat]
+    
+    style A fill:#ff6740,stroke:#333,stroke-width:2px
+    style F fill:#2e7d32,stroke:#333,stroke-width:2px,color:#fff
+    style G fill:#f48024,stroke:#333,stroke-width:2px
+    style H fill:#0088cc,stroke:#333,stroke-width:2px,color:#fff
 ```
 
 | Estación | Archivo Responsable | ¿Qué hace? |
 | :--- | :--- | :--- |
 | **1. La Mina** | `services/mangadex/downloader.py` | Busca el manga, gestiona idiomas y descarga imágenes en `.cbz`. |
-| **2. La Forja** | `services/converter/service.py` | Llama a KCC para transformar fotos en un libro que el Kindle entienda. |
-| **3. El Correo** | `services/delivery/service.py` | Decide si el archivo va por Telegram, R2 o ffsend según el tamaño. |
+| **2. La Forja** | `services/converter/engine.py` | Llama a KCC para transformar fotos en un libro que el Kindle entienda. |
+| **3. El Correo** | `services/delivery/manager.py` | Decide si el archivo va por Telegram, R2 o ffsend según el tamaño. |
 
 ## El Cerebro: `AppConfig` ⚙️
 
@@ -56,7 +60,7 @@ MangaDex es un caos. A veces el capítulo 1 está en español, pero el 2 solo en
 | Objetivo | Archivo / Carpeta |
 | :--- | :--- |
 | **Cambiar calidad/formato del MOBI** | `core/config/settings.py` (`KCC_PROFILE`) |
-| **Agregar un nuevo método de envío** | `services/delivery/` (y registrarlo en `service.py`) |
+| **Agregar un nuevo método de envío** | `services/delivery/` (y registrarlo en `manager.py`) |
 | **Mejorar la lógica de descarga** | `services/mangadex/downloader.py` |
 | **Arreglar un error en el CLI** | `app/cli.py` |
 
