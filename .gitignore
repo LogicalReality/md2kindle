@@ -33,7 +33,7 @@ manga/
 *.epub
 
 # Agent Teams Lite
-.atl/
+# .atl/ (Permitimos el registry para que los agentes tengan contexto)
 
 # Personal Roadmap & Notes
 cloudflare_roadmap.md
@@ -42,4 +42,3 @@ cloudflare_roadmap.md
 build/
 dist/
 *.egg-info/
-
