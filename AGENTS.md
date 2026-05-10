@@ -84,12 +84,12 @@ Telegram delivery uses the following strategy:
 - [ ] **Python**: 3.13 installed.
 - [ ] **External Binaries**: `mangadex-dl`, `kcc_c2e`, `ffsend` (fallback for large files) placed in `bin/` or PATH.
 - [ ] **Environment**: `.env` populated for cloud features.
-- [ ] **Verification**: Run `pytest` (Expect 63 tests passing).
+- [ ] **Verification**: Run `python -m pytest -q`. Expected: all tests pass.
 
 ## Testing & Troubleshooting
 
 - **Pathing**: Always use `.venv\Scripts\python.exe -m pytest` (not bare `pytest`) to avoid local package resolution issues.
-- **USB Mocking**: `os.name` is mocked to `"nt"` in tests to support cross-platform CI verification (29 tests should pass).
+- **USB Mocking**: `os.name` is mocked to `"nt"` in tests to support cross-platform CI verification.
 - **CI Logic**: `CI=true` suppresses KCC's noisy stderr and optimizes for non-interactive runs.
 
 ## Cloud & Integration
