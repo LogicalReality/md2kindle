@@ -11,7 +11,7 @@ def test_pipeline_uses_injected_services():
     # Mocking aggregated data and downloader to avoid side effects
     with patch("md2kindle.services.mangadex.downloader.download_manga", return_value=True), \
          patch("md2kindle.services.mangadex.api.get_manga_aggregate", return_value={}), \
-         patch("md2kindle.services.mangadex.downloader.audit_and_cleanup"), \
+         patch("md2kindle.services.mangadex.audit.audit_and_cleanup"), \
          patch("os.makedirs"), \
          patch("os.path.exists", return_value=False), \
          patch("glob.glob", return_value=["test.cbz"]), \

@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from md2kindle.app import cli, pipeline
 from md2kindle.core.config import settings as config
 from md2kindle.core.models import PipelineContext, MangaContext, DownloadRange, DeliveryOptions
-from md2kindle.services.mangadex import api, downloader
+from md2kindle.services.mangadex import api, downloader, audit
 from md2kindle.utils.ranges import parse_range
 
 
@@ -76,9 +76,9 @@ class TestAuditAndCleanup:
     def test_no_cleanup_when_no_aggregate(self, monkeypatch):
         # Con aggregate vacío, no debe borrar nada
         removed = []
-        monkeypatch.setattr(downloader.glob, "glob", lambda _: ["/fake/Berserk_Ch.1.cbz"])
-        monkeypatch.setattr(downloader.os, "remove", lambda p: removed.append(p))
-        downloader.audit_and_cleanup("/fake", {}, "c", "1", "1", False)
+        monkeypatch.setattr(audit.glob, "glob", lambda _: ["/fake/Berserk_Ch.1.cbz"])
+        monkeypatch.setattr(audit.os, "remove", lambda p: removed.append(p))
+        audit.audit_and_cleanup("/fake", {}, "c", "1", "1", False)
         assert removed == []
 
     def test_keeps_expected_chapters(self, monkeypatch):
@@ -91,12 +91,12 @@ class TestAuditAndCleanup:
             }
         }
         removed = []
-        monkeypatch.setattr(downloader.glob, "glob", lambda _: [
+        monkeypatch.setattr(audit.glob, "glob", lambda _: [
             "/fake/Berserk_Ch.1.cbz",
             "/fake/Berserk_Ch.2.cbz",
         ])
-        monkeypatch.setattr(downloader.os, "remove", lambda p: removed.append(p))
-        downloader.audit_and_cleanup("/fake", aggregate, "v", "1", "1", False)
+        monkeypatch.setattr(audit.os, "remove", lambda p: removed.append(p))
+        audit.audit_and_cleanup("/fake", aggregate, "v", "1", "1", False)
         assert removed == []  # Ninguno es huérfano
 
     def test_removes_orphan_chapters(self, monkeypatch):
@@ -108,21 +108,21 @@ class TestAuditAndCleanup:
             }
         }
         removed = []
-        monkeypatch.setattr(downloader.glob, "glob", lambda _: [
+        monkeypatch.setattr(audit.glob, "glob", lambda _: [
             "/fake/Berserk_Ch.1.cbz",
             "/fake/Berserk_Ch.999.cbz",
         ])
-        monkeypatch.setattr(downloader.os, "remove", lambda p: removed.append(p))
-        downloader.audit_and_cleanup("/fake", aggregate, "v", "1", "1", False)
+        monkeypatch.setattr(audit.os, "remove", lambda p: removed.append(p))
+        audit.audit_and_cleanup("/fake", aggregate, "v", "1", "1", False)
         assert "/fake/Berserk_Ch.999.cbz" in removed
         assert "/fake/Berserk_Ch.1.cbz" not in removed
 
     def test_keeps_oneshot_when_skip_false(self, monkeypatch):
         # aggregate vacío → safe mode → no borra nada
         removed = []
-        monkeypatch.setattr(downloader.glob, "glob", lambda _: ["/fake/Berserk_Ch.none.cbz"])
-        monkeypatch.setattr(downloader.os, "remove", lambda p: removed.append(p))
-        downloader.audit_and_cleanup("/fake", {}, "v", "1", "1", False)
+        monkeypatch.setattr(audit.glob, "glob", lambda _: ["/fake/Berserk_Ch.none.cbz"])
+        monkeypatch.setattr(audit.os, "remove", lambda p: removed.append(p))
+        audit.audit_and_cleanup("/fake", {}, "v", "1", "1", False)
         assert removed == []
 
 
