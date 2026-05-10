@@ -11,7 +11,7 @@ from md2kindle.services.delivery.ffsend import upload_to_ffsend
 logger = logging.getLogger(__name__)
 
 
-def send_message(text: str, parse_mode: str = None) -> bool:
+def send_message(text: str, parse_mode: str | None = None) -> bool:
     """Envía un mensaje de texto simple a Telegram."""
     token = os.environ.get("TELEGRAM_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")

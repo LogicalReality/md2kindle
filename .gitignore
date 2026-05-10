@@ -32,9 +32,6 @@ manga/
 *.mobi
 *.epub
 
-# Agent Teams Lite
-.atl/
-
 # Personal Roadmap & Notes
 cloudflare_roadmap.md
 
@@ -42,4 +39,5 @@ cloudflare_roadmap.md
 build/
 dist/
 *.egg-info/
+scratch/
 

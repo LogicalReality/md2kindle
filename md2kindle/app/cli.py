@@ -10,7 +10,7 @@ import sys
 import argparse
 import shutil
 
-from md2kindle.core.models import PipelineParams
+from md2kindle.core.models import PipelineContext, MangaContext, DownloadRange, DeliveryOptions
 from md2kindle.core.config import (
     clear_screen,
     DEFAULT_LANGUAGE,
@@ -24,7 +24,7 @@ from md2kindle.app import pipeline
 logger = logging.getLogger(__name__)
 
 
-def resolve_parameters() -> PipelineParams:
+def resolve_parameters() -> PipelineContext:
     """Resuelve los parámetros del script (CLI -> Inferencia -> Interactivo)"""
     parser = argparse.ArgumentParser(description="MangaDex to Kindle CLI Converter")
     parser.add_argument("url", nargs="?", help="URL de MangaDex (manga o capítulo)")
@@ -159,33 +159,44 @@ def resolve_parameters() -> PipelineParams:
     )
     silent = args.silent
 
-    return PipelineParams(
-        url=download_url,
-        title=title,
-        lang=lang,
-        mode=mode,
-        start=start,
-        end=end,
-        author=author_name,
-        manga_uuid=manga_uuid,
-        skip_oneshots=skip_oneshots,
+    return PipelineContext(
+        manga=MangaContext(
+            url=download_url,
+            title=title,
+            lang=lang,
+            author=author_name,
+            manga_uuid=manga_uuid,
+        ),
+        range=DownloadRange(
+            mode=mode,
+            start=start,
+            end=end,
+            skip_oneshots=skip_oneshots,
+        ),
+        delivery=DeliveryOptions(
+            telegram=args.telegram,
+            r2=args.r2,
+        ),
         silent=silent,
-        telegram=args.telegram,
-        r2=args.r2,
     )
 
 
 def main():
-    # Verificación de binarios mejorada (Considera PATH)
+    # 1. Permitir que --help funcione incluso sin binarios
+    if "-h" in sys.argv or "--help" in sys.argv:
+        resolve_parameters()
+
+    # 2. Verificación de binarios (para ejecución normal o modo interactivo)
     has_md_dl = os.path.exists(MANGADEX_DL_PATH) or shutil.which("mangadex-dl")
     has_kcc = os.path.exists(KCC_C2E_PATH) or shutil.which("kcc-c2e")
 
     if not has_md_dl or not has_kcc:
-        print(f"[ERROR] No se encontraron los binarios necesarios.")
+        print("[ERROR] No se encontraron los binarios necesarios.")
         print(f"  MangaDex-DL: {'OK' if has_md_dl else 'FALTA'}")
         print(f"  KCC-C2E: {'OK' if has_kcc else 'FALTA'}")
-        return
+        sys.exit(1)
 
+    # 3. Resolver parámetros (CLI o interactivo)
     params = resolve_parameters()
 
     # Configurar logging DESPUÉS de resolver parámetros (necesitamos saber si --silent)

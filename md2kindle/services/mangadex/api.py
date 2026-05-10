@@ -1,191 +1,56 @@
-"""Consultas a la API de MangaDex."""
+"""Fachada de compatibilidad para consultas a la API de MangaDex."""
 
 import logging
-import re
-import json
-import urllib.request
-import urllib.parse
-
-from md2kindle.core.config import sanitize_filename
+from md2kindle.services.mangadex.client import get_manga, get_chapter, get_aggregate
+from md2kindle.services.mangadex.parser import extract_uuid_from_url, parse_chapter_data, parse_manga_data, parse_aggregate_data
+from md2kindle.services.mangadex.resolver import build_chapter_lang_map
 
 logger = logging.getLogger(__name__)
 
-
-def get_api_data(url):
-    """Llamada genérica a la API con User-Agent para evitar bloqueos"""
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode())
-    except Exception as e:
-        # Silencioso para no romper el flujo principal si la API falla
-        return None
-
-
 def get_manga_title_options(url):
     """Consulta la API de MangaDex para obtener títulos, autor real y sugerencias de contexto"""
-    suggestions = {"mode": None, "start": None, "vol": None, "lang": None}
+    suggestions: dict[str, str | None] = {"mode": None, "start": None, "vol": None, "lang": None}
     try:
-        # 1. Validación y Extracción de UUID/Tipo
-        # Soporta: /title/UUID, /manga/UUID, /chapter/UUID y versiones numéricas legacy
-        match = re.search(r"(title|manga|chapter)/([a-f0-9-]{36}|[0-9]+)", url)
-        if not match:
+        link_type, uuid = extract_uuid_from_url(url)
+        if not link_type or not uuid:
             return [], "MangaDex", suggestions, None
 
-        link_type = match.group(1)
-        uuid = match.group(2)
         manga_uuid = uuid
 
-        # 2. Si es un capítulo, obtener primero el ID del manga y datos del capítulo
         if link_type == "chapter":
             logger.info("Detectada URL de capítulo. Buscando manga asociado...")
-            chap_data = get_api_data(
-                f"https://api.mangadex.org/chapter/{uuid}?includes[]=manga"
-            )
-            if chap_data and "data" in chap_data:
-                attributes = chap_data["data"]["attributes"]
-                suggestions["mode"] = "c"  # type: ignore
-                suggestions["start"] = attributes.get("chapter")
-                suggestions["vol"] = attributes.get("volume")
-                suggestions["lang"] = attributes.get("translatedLanguage")
+            chap_data = get_chapter(uuid)
+            if chap_data:
+                start, vol, lang, rel_manga_uuid = parse_chapter_data(chap_data)
+                
+                suggestions["mode"] = "c"
+                suggestions["start"] = start
+                suggestions["vol"] = vol
+                suggestions["lang"] = lang
+                
+                if rel_manga_uuid:
+                    manga_uuid = rel_manga_uuid
 
-                # Buscar el ID del manga en las relaciones
-                for rel in chap_data["data"]["relationships"]:
-                    if rel["type"] == "manga":
-                        manga_uuid = rel["id"]
-                        break
+        manga_data = get_manga(manga_uuid)
+        if not manga_data:
+            return [], "MangaDex", suggestions, manga_uuid
 
-        # 3. Consultar datos del Manga
-        api_url = f"https://api.mangadex.org/manga/{manga_uuid}?includes[]=author"
-        res = get_api_data(api_url)
-        if not res or "data" not in res:
-            return [], "MangaDex", suggestions, None
-
-        res_data = res["data"]
-        data = res_data["attributes"]
-        relationships = res_data.get("relationships", [])
-
-        # 4. Extraer Nombres de Autores (Multiautor)
-        authors = []
-        for rel in relationships:
-            if rel["type"] == "author" and "attributes" in rel:
-                authors.append(rel["attributes"]["name"])
-
-        author_name = " & ".join(authors) if authors else "MangaDex"
-
-        options = []
-        lang_map = {
-            "ja-ro": "Romaji",
-            "en": "English",
-            "es-la": "Spanish (Latino)",
-            "es": "Spanish",
-        }
-
-        # Título principal y alternativos
-        main_title = data.get("title", {})
-        for lang, value in main_title.items():
-            if lang in lang_map:
-                options.append(
-                    {"label": lang_map[lang], "title": sanitize_filename(value)}
-                )
-
-        alt_titles = data.get("altTitles", [])
-        for alt in alt_titles:
-            for lang, value in alt.items():
-                if lang in lang_map:
-                    options.append(
-                        {"label": lang_map[lang], "title": sanitize_filename(value)}
-                    )
-
-        # Unificar y Ordenar
-        seen = set()
-        unique_options = []
-        for opt in options:
-            if opt["title"].lower() not in seen:
-                seen.add(opt["title"].lower())
-                unique_options.append(opt)
-
-        priority = ["ja-ro", "en", "es-la", "es"]
-        unique_options.sort(
-            key=lambda x: (
-                priority.index(next(k for k, v in lang_map.items() if v == x["label"]))
-                if any(v == x["label"] for v in lang_map.values())
-                else 99
-            )
-        )
+        unique_options, author_name = parse_manga_data(manga_data)
 
         return unique_options, author_name, suggestions, manga_uuid
     except Exception as e:
         logger.error("Error inesperado al procesar URL: %s", e)
         return [], "MangaDex", suggestions, None
 
-
 def get_manga_aggregate(manga_uuid, lang):
     """Obtiene la estructura completa de Tomos y Capítulos desde MangaDex"""
     try:
-        api_url = f"https://api.mangadex.org/manga/{manga_uuid}/aggregate?translatedLanguage[]={lang}"
-        data = get_api_data(api_url)
-        if data and data.get("result") == "ok":
-            return data.get("volumes", {})
+        data = get_aggregate(manga_uuid, lang)
+        if data:
+            return parse_aggregate_data(data)
         return {}
     except Exception as e:
         logger.warning("No se pudo obtener la estructura de auditoría: %s", e)
         return {}
 
-
-def build_chapter_lang_map(volume, primary_lang, primary_aggregate, fallback_aggregates, lang_priority):
-    """Construye un mapa {capítulo → idioma} para un volumen usando todos los idiomas disponibles.
-
-    Para cada capítulo del volumen, elige el primer idioma de la cadena de prioridad
-    que lo tenga disponible. Esto permite descargas mixtas cuando el idioma principal
-    no tiene todos los capítulos.
-
-    Args:
-        volume: Número de volumen (str).
-        primary_lang: Idioma principal del usuario.
-        primary_aggregate: Datos de aggregate para el idioma principal.
-        fallback_aggregates: Dict {lang: aggregate_data} con los fallbacks.
-        lang_priority: Lista ordenada de idiomas fallback (sin el principal).
-
-    Returns:
-        Tupla (chapter_map, is_mixed) donde:
-        - chapter_map: Dict {chapter_num_str: lang_str}
-        - is_mixed: True si se necesitó más de un idioma.
-    """
-    # 1. Recopilar TODOS los capítulos del volumen en todos los idiomas
-    all_chapters = set()
-    lang_chapters = {}  # {lang: set(chapter_nums)}
-
-    # Idioma principal
-    if primary_aggregate and volume in primary_aggregate:
-        vol_data = primary_aggregate[volume]
-        chapters = set(vol_data.get("chapters", {}).keys())
-        lang_chapters[primary_lang] = chapters
-        all_chapters.update(chapters)
-
-    # Fallbacks
-    for fb_lang in lang_priority:
-        if fb_lang in fallback_aggregates and volume in fallback_aggregates[fb_lang]:
-            vol_data = fallback_aggregates[fb_lang][volume]
-            chapters = set(vol_data.get("chapters", {}).keys())
-            lang_chapters[fb_lang] = chapters
-            all_chapters.update(chapters)
-
-    if not all_chapters:
-        return {}, False
-
-    # 2. Asignar cada capítulo al mejor idioma disponible
-    full_priority = [primary_lang] + lang_priority
-    chapter_map = {}
-
-    for chapter in all_chapters:
-        for lang in full_priority:
-            if lang in lang_chapters and chapter in lang_chapters[lang]:
-                chapter_map[chapter] = lang
-                break
-
-    # 3. Determinar si es mixto
-    unique_langs = set(chapter_map.values())
-    is_mixed = len(unique_langs) > 1
-
-    return chapter_map, is_mixed
+__all__ = ["get_manga_title_options", "get_manga_aggregate", "build_chapter_lang_map"]

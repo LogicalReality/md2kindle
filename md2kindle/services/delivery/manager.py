@@ -11,9 +11,28 @@ from md2kindle.services.delivery.d1 import log_download
 from md2kindle.services.delivery.r2 import send_to_r2
 from md2kindle.services.delivery.telegram import send_message, send_to_telegram
 from md2kindle.services.delivery.usb import send_to_usb
-from md2kindle.core.models import PipelineParams, format_manga_title
+from md2kindle.core.models import PipelineContext, format_manga_title
 
 logger = logging.getLogger(__name__)
+
+
+class DeliveryManager:
+    """Adapter para el servicio de entrega de archivos."""
+
+    def __init__(self, app_config: AppConfig | None = None):
+        self._config = app_config or APP_CONFIG
+
+    def deliver(
+        self,
+        files: list[str],
+        context: PipelineContext,
+    ) -> None:
+        """Delega la entrega a deliver_files."""
+        deliver_files(
+            mobi_files=files,
+            params=context,
+            app_config=self._config,
+        )
 
 
 def ask_fallback_choice(
@@ -47,22 +66,22 @@ def send_r2_link_to_telegram(manga: str, vol: str, mobi_file: str, url: str) -> 
 
 
 def _deliver_via_telegram(
-    mobi_file: str, params: PipelineParams, app_config: AppConfig
+    mobi_file: str, params: PipelineContext, app_config: AppConfig
 ) -> None:
     if app_config is APP_CONFIG:
         send_to_telegram(mobi_file)
     else:
         send_to_telegram(mobi_file, app_config=app_config)
     manga, vol = format_manga_title(mobi_file, app_config.output_folder_kcc)
-    log_download(manga, vol, params.lang, mobi_file, "telegram")
+    log_download(manga, vol, params.manga.lang, mobi_file, "telegram")
 
 
-def _deliver_via_r2(mobi_file: str, params: PipelineParams, app_config: AppConfig) -> None:
+def _deliver_via_r2(mobi_file: str, params: PipelineContext, app_config: AppConfig) -> None:
     manga, vol = format_manga_title(mobi_file, app_config.output_folder_kcc)
     url = send_to_r2(mobi_file, manga, vol)
     if url:
         send_r2_link_to_telegram(manga, vol, mobi_file, url)
-        log_download(manga, vol, params.lang, mobi_file, "r2")
+        log_download(manga, vol, params.manga.lang, mobi_file, "r2")
         return
 
     logger.warning(
@@ -74,7 +93,7 @@ def _deliver_via_r2(mobi_file: str, params: PipelineParams, app_config: AppConfi
 
 def deliver_files(
     mobi_files: list[str],
-    params: PipelineParams,
+    params: PipelineContext,
     input_func: Callable[[str], str] = input,
     app_config: AppConfig | None = None,
 ) -> None:
@@ -90,17 +109,17 @@ def deliver_files(
 
     usb_detected = False
     for mobi_file in mobi_files:
-        if send_to_usb(mobi_file, params.title):
+        if send_to_usb(mobi_file, params.manga.title):
             usb_detected = True
             manga, vol = format_manga_title(mobi_file, app_config.output_folder_kcc)
-            log_download(manga, vol, params.lang, mobi_file, "usb")
+            log_download(manga, vol, params.manga.lang, mobi_file, "usb")
 
-    if params.r2:
+    if params.delivery.r2:
         for mobi_file in mobi_files:
             _deliver_via_r2(mobi_file, params, app_config)
         return
 
-    if params.telegram:
+    if params.delivery.telegram:
         for mobi_file in mobi_files:
             _deliver_via_telegram(mobi_file, params, app_config)
         return
