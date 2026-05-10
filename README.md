@@ -2,11 +2,15 @@
 
 **English** | [🌐 Español](README.es.md)
 
-An automation pipeline to download manga from [MangaDex](https://mangadex.org) and convert it into Kindle-optimized formats (`.mobi`/`.azw3`).
+An automation pipeline to download manga from [MangaDex](https://mangadex.org) and convert it into e-reader-optimized formats.
+
+> [!NOTE]
+> MOBI is the default output. AZW3 may be supported depending on KCC settings.
 
 ## Quick Start
 
 1. **Install Prerequisites**: [Python 3.13](https://www.python.org/downloads/) and download [kcc_c2e](https://github.com/ciromattia/kcc/releases), [mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases), and [ffsend](https://github.com/timvisee/ffsend/releases) binaries into the `bin/` folder.
+   *(ffsend is only used as a fallback for large Telegram deliveries when Cloudflare R2 is not configured)*.
 2. **Setup**:
 
    ```bash
@@ -14,6 +18,9 @@ An automation pipeline to download manga from [MangaDex](https://mangadex.org) a
    cd md2kindle
    pip install -e .
    ```
+
+   - **Windows**: `copy .env.example .env`
+   - **Linux/macOS**: `cp .env.example .env`
 
 3. **Execute**: Run `run.bat` (Windows) or `python md2kindle.py`.
 
@@ -23,8 +30,32 @@ An automation pipeline to download manga from [MangaDex](https://mangadex.org) a
 | :--- | :--- |
 | **Intelligent Fallback** | Automatically tries `es-la` > `en` > `es` per chapter. |
 | **Kindle Optimized** | RTL reading, upscaling, and double-page spread rotation. |
-| **Flexible Delivery** | Direct Telegram, Cloudflare R2 links, or USB (Windows). |
+| **Flexible Delivery** | Deliver via USB or Telegram (direct file, R2 links, or ffsend fallback). |
 | **Zero Config** | Auto-detects binaries in `./bin/`, PATH, or venv. |
+
+## How it Works
+
+`md2kindle` operates as a strictly orchestrated pipeline:
+
+```mermaid
+graph LR
+    MD[MangaDex API] -->|Download| DL(Downloader)
+    DL -->|Audit| AD(Audit Service)
+    AD -->|Convert| CV(KCC Engine)
+    CV -->|Deliver| DV(Delivery Manager)
+    DV -->|USB| K(Kindle Device)
+    DV -->|Cloud| R2(Cloudflare R2)
+    DV -->|Chat| TG(Telegram Bot)
+    
+    style MD fill:#ff6740,stroke:#333,stroke-width:2px
+    style K fill:#2e7d32,stroke:#333,stroke-width:2px,color:#fff
+    style R2 fill:#f48024,stroke:#333,stroke-width:2px
+    style TG fill:#0088cc,stroke:#333,stroke-width:2px,color:#fff
+```
+
+1. **The Source**: Fetches metadata and images from MangaDex.
+2. **The Forge**: Packages chapters as CBZ and uses Kindle Comic Converter (KCC) to optimize them for e-ink displays.
+3. **The Courier**: Delivers the final e-reader file (`.mobi` by default) to your preferred destination.
 
 ## Details
 

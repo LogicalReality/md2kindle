@@ -16,6 +16,9 @@ Python-based automation pipeline that fetches manga from MangaDex, processes it 
 
 ## Architecture Overview
 
+> [!NOTE]
+> Este mapa es una referencia rápida. Para una explicación profunda de las capas y el flujo de datos, consultá [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ```text
 md2kindle.py          # Entrypoint (thin wrapper)
 md2kindle/
@@ -66,10 +69,20 @@ md2kindle/
 - **Idempotency**: Skips download if `.cbz` exists; skips conversion if `.mobi` exists.
 - **Protocols**: `Converter` and `Deliverer` define DI interfaces in `core/ports.py`.
 
+### Delivery fallback order
+
+Telegram delivery uses the following strategy:
+
+1. **Direct**: If file < 45MB, send directly through Telegram Bot API.
+2. **Cloudflare R2**: If file > 45MB and R2 is configured, upload to S3 and send link.
+3. **ffsend**: If file > 45MB and R2 is NOT configured, use `ffsend` (E2EE) as zero-config fallback.
+
+`ffsend` is not a replacement for R2; it is a safety net for large files in zero-config environments.
+
 ## Environment
 
 - [ ] **Python**: 3.13 installed.
-- [ ] **External Binaries**: `mangadex-dl`, `kcc_c2e`, `ffsend` placed in `bin/` or PATH.
+- [ ] **External Binaries**: `mangadex-dl`, `kcc_c2e`, `ffsend` (fallback for large files) placed in `bin/` or PATH.
 - [ ] **Environment**: `.env` populated for cloud features.
 - [ ] **Verification**: Run `pytest` (Expect 63 tests passing).
 
@@ -83,3 +96,9 @@ md2kindle/
 
 - **GitHub Actions**: `.github/workflows/manga-pipeline.yml` handles manual/cron dispatch.
 - **Telegram Bot**: Cloudflare Worker (`.github/workers/telegram-bot.js`) triggers CI via REST.
+
+## Non-goals
+
+- **GUI Implementation**: The project is strictly CLI/headless-first.
+- **Direct Image Processing**: All conversion logic is delegated to KCC; we do not manipulate individual images.
+- **Multi-Source Support**: We only support MangaDex as the source.
