@@ -1,24 +1,33 @@
-from md2kindle.core.models import PipelineParams
+from md2kindle.core.models import PipelineContext, MangaContext, DownloadRange, DeliveryOptions
 from md2kindle.services.delivery import manager as service
 
 
 def make_params(**overrides):
-    data = {
-        "url": "https://mangadex.org/title/123",
-        "title": "TestManga",
-        "lang": "es-la",
-        "mode": "v",
-        "start": "1",
-        "end": "1",
-        "author": "TestAuthor",
-        "manga_uuid": "123",
-        "skip_oneshots": False,
-        "silent": True,
+    delivery_args = {
         "telegram": False,
         "r2": False,
     }
-    data.update(overrides)
-    return PipelineParams(**data)
+    for k in list(overrides.keys()):
+        if k in delivery_args:
+            delivery_args[k] = overrides.pop(k)
+
+    return PipelineContext(
+        manga=MangaContext(
+            url="https://mangadex.org/title/123",
+            title="TestManga",
+            lang="es-la",
+            author="TestAuthor",
+            manga_uuid="123"
+        ),
+        range=DownloadRange(
+            mode="v",
+            start="1",
+            end="1",
+            skip_oneshots=False
+        ),
+        delivery=DeliveryOptions(**delivery_args),
+        silent=True
+    )
 
 
 def test_deliver_files_no_files_does_nothing(monkeypatch):

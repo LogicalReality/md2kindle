@@ -20,7 +20,7 @@ from md2kindle.services.mangadex import (
     download_volume_mixed,
     audit_and_cleanup,
 )
-from md2kindle.core.models import PipelineParams
+from md2kindle.core.models import PipelineContext
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def _config_kwargs(explicit_config: bool, app_config: AppConfig) -> dict:
 
 
 def process_volume_flow(
-    params: PipelineParams, vol: str, base_path: str,
+    params: PipelineContext, vol: str, base_path: str,
     aggregate_data: dict, fallback_aggregates: dict, lang_priority: list[str],
     app_config: AppConfig | None = None,
 ) -> list[str]:
@@ -45,9 +45,9 @@ def process_volume_flow(
     config_kwargs = _config_kwargs(explicit_config, app_config)
 
     # --- SALTAR SI YA EXISTE ---
-    rel_path = os.path.join(params.title, f"Vol {vol}")
+    rel_path = os.path.join(params.manga.title, f"Vol {vol}")
     expected_output_dir = os.path.join(app_config.output_folder_kcc, rel_path)
-    mobi_name = f"{params.title} Vol. {vol}.mobi"
+    mobi_name = f"{params.manga.title} Vol. {vol}.mobi"
     mobi_file = os.path.join(expected_output_dir, mobi_name)
 
     if os.path.exists(mobi_file):
@@ -65,16 +65,16 @@ def process_volume_flow(
     else:
         # Construir mapa capítulo→idioma para fallback granular
         chapter_map, is_mixed = build_chapter_lang_map(
-            vol, params.lang, aggregate_data, fallback_aggregates, lang_priority,
+            vol, params.manga.lang, aggregate_data, fallback_aggregates, lang_priority,
         )
 
         if is_mixed and chapter_map:
             # Descarga mixta: múltiples idiomas por capítulo
             download_ok = download_volume_mixed(
-                params.url,
+                params.manga.url,
                 folder,
                 chapter_map,
-                params.skip_oneshots,
+                params.range.skip_oneshots,
                 vol=vol,
                 **config_kwargs,
             )
@@ -83,26 +83,26 @@ def process_volume_flow(
         else:
             # Descarga normal: un solo idioma
             # Si el mapa determinó que todo viene de un fallback, usar ese idioma
-            download_lang = params.lang
+            download_lang = params.manga.lang
             if chapter_map:
                 unique_lang = set(chapter_map.values())
                 if len(unique_lang) == 1:
                     resolved_lang = next(iter(unique_lang))
-                    if resolved_lang != params.lang:
+                    if resolved_lang != params.manga.lang:
                         logger.info(
                             "Vol %s no hallado en '%s'. Usando fallback: '%s'",
-                            vol, params.lang, resolved_lang,
+                            vol, params.manga.lang, resolved_lang,
                         )
                         download_lang = resolved_lang
 
             download_ok = download_manga(
-                params.url,
+                params.manga.url,
                 folder,
                 download_lang,
                 "v",
                 vol,
                 vol,
-                params.skip_oneshots,
+                params.range.skip_oneshots,
                 **config_kwargs,
             )
             if not download_ok:
@@ -110,7 +110,7 @@ def process_volume_flow(
 
     # Auditoría (limpia archivos basura si es necesario) y Conversión
     audit_and_cleanup(
-        folder, aggregate_data, "v", vol, vol, params.skip_oneshots,
+        folder, aggregate_data, "v", vol, vol, params.range.skip_oneshots,
     )
 
     cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
@@ -120,14 +120,14 @@ def process_volume_flow(
         return []
 
     mobi_list = convert_with_kcc(
-        folder, params.author, params.title, vol_hint=vol, **config_kwargs
+        folder, params.manga.author, params.manga.title, vol_hint=vol, **config_kwargs
     )
     return mobi_list or []
 
 
 
 def process_chapter_flow(
-    params: PipelineParams,
+    params: PipelineContext,
     base_path: str,
     aggregate_data: dict,
     app_config: AppConfig | None = None,
@@ -136,16 +136,16 @@ def process_chapter_flow(
     explicit_config = app_config is not None
     app_config = app_config or APP_CONFIG
     config_kwargs = _config_kwargs(explicit_config, app_config)
-    suffix = f"Cap {params.start}" + (
-        f"-{params.end}" if params.start != params.end else ""
+    suffix = f"Cap {params.range.start}" + (
+        f"-{params.range.end}" if params.range.start != params.range.end else ""
     )
     folder = os.path.join(base_path, suffix)
 
     # --- SALTAR SI YA EXISTE ---
-    rel_path = os.path.join(params.title, suffix)
+    rel_path = os.path.join(params.manga.title, suffix)
     expected_output_dir = os.path.join(app_config.output_folder_kcc, rel_path)
     # El conversor renombra el archivo para incluir el título de la serie
-    mobi_name = f"{params.title} {suffix}.mobi"
+    mobi_name = f"{params.manga.title} {suffix}.mobi"
     mobi_file = os.path.join(expected_output_dir, mobi_name)
 
     if os.path.exists(mobi_file):
@@ -160,13 +160,13 @@ def process_chapter_flow(
             logger.info("Archivos CBZ para el rango %s ya presentes. Saltando descarga...", suffix)
         else:
             download_ok = download_manga(
-                params.url,
+                params.manga.url,
                 folder,
-                params.lang,
+                params.manga.lang,
                 "c",
-                params.start,
-                params.end,
-                params.skip_oneshots,
+                params.range.start,
+                params.range.end,
+                params.range.skip_oneshots,
                 **config_kwargs,
             )
             if not download_ok:
@@ -182,9 +182,9 @@ def process_chapter_flow(
             folder,
             aggregate_data,
             "c",
-            params.start,
-            params.end,
-            params.skip_oneshots,
+            params.range.start,
+            params.range.end,
+            params.range.skip_oneshots,
         )
 
         cbz_files = glob.glob(os.path.join(folder, "*.cbz"))
@@ -194,7 +194,7 @@ def process_chapter_flow(
             return []
 
         mobi_list = convert_with_kcc(
-            folder, params.author, params.title, vol_hint=suffix, **config_kwargs
+            folder, params.manga.author, params.manga.title, vol_hint=suffix, **config_kwargs
         )
         return mobi_list or []
         
@@ -202,32 +202,32 @@ def process_chapter_flow(
 
 
 
-def run(params: PipelineParams, app_config: AppConfig | None = None) -> None:
+def run(params: PipelineContext, app_config: AppConfig | None = None) -> None:
     """Ejecuta el pipeline completo con los parámetros resueltos."""
     explicit_config = app_config is not None
     app_config = app_config or APP_CONFIG
     config_kwargs = _config_kwargs(explicit_config, app_config)
-    base_path = os.path.join(app_config.output_folder_manga, params.title)
+    base_path = os.path.join(app_config.output_folder_manga, params.manga.title)
 
     aggregate_data = {}
     fallback_aggregates = {}
     lang_priority = ["es-la", "en", "es"]
-    if params.lang in lang_priority:
-        lang_priority.remove(params.lang)
+    if params.manga.lang in lang_priority:
+        lang_priority.remove(params.manga.lang)
 
-    if params.manga_uuid:
+    if params.manga.manga_uuid:
         logger.info("Consultando estructura de MangaDex para auditoría y fallbacks...")
-        aggregate_data = get_manga_aggregate(params.manga_uuid, params.lang)
+        aggregate_data = get_manga_aggregate(params.manga.manga_uuid, params.manga.lang)
 
         for fb_lang in lang_priority:
-            fb_data = get_manga_aggregate(params.manga_uuid, fb_lang)
+            fb_data = get_manga_aggregate(params.manga.manga_uuid, fb_lang)
             if fb_data:
                 fallback_aggregates[fb_lang] = fb_data
 
     all_mobi_files = []
 
-    if params.mode == "v":
-        volumes = parse_range(params.start, params.end)
+    if params.range.mode == "v":
+        volumes = parse_range(params.range.start, params.range.end)
         logger.info("Detectado modo VOLUMEN. Procesando %d tomo(s) individualmente...", len(volumes))
 
         for vol in volumes:
@@ -245,8 +245,8 @@ def run(params: PipelineParams, app_config: AppConfig | None = None) -> None:
         if not aggregate_data:
             for fb_lang in lang_priority:
                 if fb_lang in fallback_aggregates:
-                    logger.info("Idioma '%s' sin datos. Usando fallback global: '%s'", params.lang, fb_lang)
-                    params.lang = fb_lang
+                    logger.info("Idioma '%s' sin datos. Usando fallback global: '%s'", params.manga.lang, fb_lang)
+                    params.manga.lang = fb_lang
                     aggregate_data = fallback_aggregates[fb_lang]
                     break
 

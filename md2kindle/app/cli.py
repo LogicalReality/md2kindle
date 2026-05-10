@@ -10,7 +10,7 @@ import sys
 import argparse
 import shutil
 
-from md2kindle.core.models import PipelineParams
+from md2kindle.core.models import PipelineContext, MangaContext, DownloadRange, DeliveryOptions
 from md2kindle.core.config import (
     clear_screen,
     DEFAULT_LANGUAGE,
@@ -24,7 +24,7 @@ from md2kindle.app import pipeline
 logger = logging.getLogger(__name__)
 
 
-def resolve_parameters() -> PipelineParams:
+def resolve_parameters() -> PipelineContext:
     """Resuelve los parámetros del script (CLI -> Inferencia -> Interactivo)"""
     parser = argparse.ArgumentParser(description="MangaDex to Kindle CLI Converter")
     parser.add_argument("url", nargs="?", help="URL de MangaDex (manga o capítulo)")
@@ -159,19 +159,25 @@ def resolve_parameters() -> PipelineParams:
     )
     silent = args.silent
 
-    return PipelineParams(
-        url=download_url,
-        title=title,
-        lang=lang,
-        mode=mode,
-        start=start,
-        end=end,
-        author=author_name,
-        manga_uuid=manga_uuid,
-        skip_oneshots=skip_oneshots,
+    return PipelineContext(
+        manga=MangaContext(
+            url=download_url,
+            title=title,
+            lang=lang,
+            author=author_name,
+            manga_uuid=manga_uuid,
+        ),
+        range=DownloadRange(
+            mode=mode,
+            start=start,
+            end=end,
+            skip_oneshots=skip_oneshots,
+        ),
+        delivery=DeliveryOptions(
+            telegram=args.telegram,
+            r2=args.r2,
+        ),
         silent=silent,
-        telegram=args.telegram,
-        r2=args.r2,
     )
 
 

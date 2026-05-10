@@ -9,9 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from md2kindle.app import cli, pipeline
 from md2kindle.core.config import settings as config
-from md2kindle.core.models import PipelineParams
-from md2kindle.services.converter import engine as converter
-from md2kindle.services.delivery import telegram
+from md2kindle.core.models import PipelineContext, MangaContext, DownloadRange, DeliveryOptions
 from md2kindle.services.mangadex import api, downloader
 from md2kindle.utils.ranges import parse_range
 
@@ -159,19 +157,25 @@ class TestMainApproval:
             return True
 
         def mock_resolve():
-            return PipelineParams(
-                url="http://test",
-                title="TestManga",
-                lang="es-la",
-                mode="v",
-                start="1",
-                end="1",
-                author="TestAuthor",
-                manga_uuid="123",
-                skip_oneshots=False,
-                silent=True,
-                telegram=True,
-                r2=False,
+            return PipelineContext(
+                manga=MangaContext(
+                    url="http://test",
+                    title="TestManga",
+                    lang="es-la",
+                    author="TestAuthor",
+                    manga_uuid="123"
+                ),
+                range=DownloadRange(
+                    mode="v",
+                    start="1",
+                    end="1",
+                    skip_oneshots=False
+                ),
+                delivery=DeliveryOptions(
+                    telegram=True,
+                    r2=False
+                ),
+                silent=True
             )
 
         def mock_aggregate(uuid, lang):
@@ -190,7 +194,7 @@ class TestMainApproval:
             return ["test_vol_1.mobi"]
 
         def mock_deliver(files, params):
-            calls.append(("deliver", files, params.title))
+            calls.append(("deliver", files, params.manga.title))
 
         glob_calls = []
 
