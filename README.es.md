@@ -10,14 +10,17 @@ Un pipeline de automatización para descargar manga desde [MangaDex](https://man
 ## Inicio Rápido
 
 1. **Instala los requisitos**: [Python 3.13](https://www.python.org/downloads/) y descarga los binarios de [kcc_c2e](https://github.com/ciromattia/kcc/releases), [mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases) y [ffsend](https://github.com/timvisee/ffsend/releases) en la carpeta `bin/`.
+   *(ffsend solo se usa como respaldo para envíos pesados por Telegram cuando Cloudflare R2 no está configurado)*.
 2. **Configuración**:
 
    ```bash
    git clone https://github.com/LogicalReality/md2kindle.git
    cd md2kindle
    pip install -e .
-   copy .env.example .env
    ```
+
+   - **Windows**: `copy .env.example .env`
+   - **Linux/macOS**: `cp .env.example .env`
 
 3. **Ejecución**: Corre `run.bat` (Windows) o `python md2kindle.py`.
 
@@ -27,7 +30,7 @@ Un pipeline de automatización para descargar manga desde [MangaDex](https://man
 | :--- | :--- |
 | **Fallback Inteligente** | Intenta automáticamente `es-la` > `en` > `es` por cada capítulo. |
 | **Optimizado para Kindle** | Lectura RTL, escalado de imágenes y rotación de páginas dobles. |
-| **Entrega Flexible** | Telegram directo, enlaces de Cloudflare R2 o USB (Windows). |
+| **Entrega Flexible** | Envío vía USB o Telegram (archivo directo, enlaces R2 o respaldo ffsend). |
 | **Cero Configuración** | Auto-detecta binarios en `./bin/`, PATH o venv. |
 
 ## Cómo funciona

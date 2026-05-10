@@ -2,7 +2,7 @@
 
 **English** | [🌐 Español](README.es.md)
 
-An automation pipeline to download manga from [MangaDex](https://mangadex.org) and convert it into ereader-optimized formats.
+An automation pipeline to download manga from [MangaDex](https://mangadex.org) and convert it into e-reader-optimized formats.
 
 > [!NOTE]
 > MOBI is the default output. AZW3 may be supported depending on KCC settings.
@@ -10,14 +10,17 @@ An automation pipeline to download manga from [MangaDex](https://mangadex.org) a
 ## Quick Start
 
 1. **Install Prerequisites**: [Python 3.13](https://www.python.org/downloads/) and download [kcc_c2e](https://github.com/ciromattia/kcc/releases), [mangadex-dl](https://github.com/mansuf/mangadex-downloader/releases), and [ffsend](https://github.com/timvisee/ffsend/releases) binaries into the `bin/` folder.
+   *(ffsend is only used as a fallback for large Telegram deliveries when Cloudflare R2 is not configured)*.
 2. **Setup**:
 
    ```bash
    git clone https://github.com/LogicalReality/md2kindle.git
    cd md2kindle
    pip install -e .
-   copy .env.example .env
    ```
+
+   - **Windows**: `copy .env.example .env`
+   - **Linux/macOS**: `cp .env.example .env`
 
 3. **Execute**: Run `run.bat` (Windows) or `python md2kindle.py`.
 
@@ -27,7 +30,7 @@ An automation pipeline to download manga from [MangaDex](https://mangadex.org) a
 | :--- | :--- |
 | **Intelligent Fallback** | Automatically tries `es-la` > `en` > `es` per chapter. |
 | **Kindle Optimized** | RTL reading, upscaling, and double-page spread rotation. |
-| **Flexible Delivery** | Direct Telegram, Cloudflare R2 links, or USB (Windows). |
+| **Flexible Delivery** | Deliver via USB or Telegram (direct file, R2 links, or ffsend fallback). |
 | **Zero Config** | Auto-detects binaries in `./bin/`, PATH, or venv. |
 
 ## How it Works
@@ -52,7 +55,7 @@ graph LR
 
 1. **The Source**: Fetches metadata and images from MangaDex.
 2. **The Forge**: Packages chapters as CBZ and uses Kindle Comic Converter (KCC) to optimize them for e-ink displays.
-3. **The Courier**: Delivers the final ereader file (`.mobi` by default) to your preferred destination.
+3. **The Courier**: Delivers the final e-reader file (`.mobi` by default) to your preferred destination.
 
 ## Details
 
