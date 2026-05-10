@@ -38,6 +38,18 @@ class AppConfig:
     language_fallback_pool: list[str] = field(default_factory=lambda: ["es-la", "en", "es"])
     skip_oneshots_on_volume_mode: bool = True
     is_ci: bool = False
+    # Telegram
+    telegram_bot_token: str | None = None
+    telegram_chat_id: str | None = None
+    # R2
+    r2_account_id: str | None = None
+    r2_access_key_id: str | None = None
+    r2_secret_access_key: str | None = None
+    r2_bucket_name: str | None = None
+    # D1 (Observabilidad)
+    d1_account_id: str | None = None
+    d1_database_id: str | None = None
+    d1_api_token: str | None = None
 
 
 def load_config(root_dir=None) -> AppConfig:
@@ -50,6 +62,16 @@ def load_config(root_dir=None) -> AppConfig:
         output_folder_kcc=os.path.join(root_dir, "output"),
         is_ci=os.environ.get("CI") == "true"
         or os.environ.get("GITHUB_ACTIONS") == "true",
+        # Credentials
+        telegram_bot_token=os.environ.get("TELEGRAM_TOKEN"),
+        telegram_chat_id=os.environ.get("TELEGRAM_CHAT_ID"),
+        r2_account_id=os.environ.get("CLOUDFLARE_ACCOUNT_ID"),
+        r2_access_key_id=os.environ.get("R2_ACCESS_KEY_ID"),
+        r2_secret_access_key=os.environ.get("R2_SECRET_ACCESS_KEY"),
+        r2_bucket_name=os.environ.get("R2_BUCKET_NAME"),
+        d1_account_id=os.environ.get("CLOUDFLARE_ACCOUNT_ID"),
+        d1_database_id=os.environ.get("D1_DATABASE_ID"),
+        d1_api_token=os.environ.get("D1_API_TOKEN"),
     )
 
 

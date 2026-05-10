@@ -90,6 +90,8 @@ Telegram delivery uses the following strategy:
 
 - **Pathing**: Always use `.venv\Scripts\python.exe -m pytest` (not bare `pytest`) to avoid local package resolution issues.
 - **USB Mocking**: `os.name` is mocked to `"nt"` in tests to support cross-platform CI verification.
+- **CLI URL**: Both positional `url` and `--url` flag are supported. The GitHub Actions workflow uses the flag for robustness.
+- **Delivery Logic**: USB is always attempted first (opportunistic auto-copy). Cloud flags (`--r2`, `--telegram`) act as additional, explicit delivery paths.
 - **CI Logic**: `CI=true` suppresses KCC's noisy stderr and optimizes for non-interactive runs.
 
 ## Cloud & Integration

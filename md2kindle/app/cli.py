@@ -28,6 +28,7 @@ def resolve_parameters() -> PipelineContext:
     """Resuelve los parámetros del script (CLI -> Inferencia -> Interactivo)"""
     parser = argparse.ArgumentParser(description="MangaDex to Kindle CLI Converter")
     parser.add_argument("url", nargs="?", help="URL de MangaDex (manga o capítulo)")
+    parser.add_argument("--url", dest="url_flag", help="URL de MangaDex")
     parser.add_argument("--title", help="Nombre de la carpeta del manga")
     parser.add_argument("--lang", help="Idioma (es-la, en, es)")
     parser.add_argument(
@@ -48,13 +49,17 @@ def resolve_parameters() -> PipelineContext:
         "--r2", action="store_true", help="Subir a Cloudflare R2 y enviar URL por Telegram"
     )
 
-    args, unknown = parser.parse_known_args()
+    args = parser.parse_args()
 
     # 1. ¿Estamos en modo CLI puro o interactivo?
     is_interactive = len(sys.argv) <= 1
 
-    # URL (Requerido o Interactivo)
-    url = args.url
+    # Resolución de URL con detección de colisión
+    if args.url and args.url_flag and args.url != args.url_flag:
+        parser.error("Usa solo una URL: posicional o --url, no ambas con valores distintos.")
+
+    url = args.url_flag or args.url
+
     if not url and is_interactive:
         clear_screen()
         print("=========================================")
@@ -62,7 +67,7 @@ def resolve_parameters() -> PipelineContext:
         print("=========================================")
         url = input("\n> URL de MangaDex: ").strip()
     elif not url:
-        print("[ERROR] Se requiere la --url en modo no interactivo.")
+        print("[ERROR] Se requiere URL (posicional o --url) en modo no interactivo.")
         sys.exit(1)
 
     # Inferencia inteligente desde la URL

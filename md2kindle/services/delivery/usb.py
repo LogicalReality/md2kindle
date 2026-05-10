@@ -7,6 +7,8 @@ import posixpath
 import shutil
 import logging
 
+from md2kindle.core.config import AppConfig
+
 logger = logging.getLogger(__name__)
 
 import ctypes
@@ -127,7 +129,7 @@ def copy_via_mtp(file_path, manga_title):
     result = subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], capture_output=True)
     return result.returncode == 0
 
-def send_to_usb(file_path, manga_title):
+def send_to_usb(file_path, manga_title, app_config: AppConfig | None = None):
     """Copia el archivo generado al Kindle si está conectado."""
     # 1. Intentar como Almacenamiento Masivo (Letra de unidad)
     kindle_drive = get_kindle_drive()
