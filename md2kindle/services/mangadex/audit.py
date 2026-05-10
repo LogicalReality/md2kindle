@@ -10,6 +10,26 @@ from md2kindle.utils.ranges import parse_range
 logger = logging.getLogger(__name__)
 
 
+def _normalize_chapter_number(val):
+    """
+    Normaliza números de capítulo (ej. '5.0' -> '5', '05' -> '5').
+    Maneja el caso especial 'none'.
+    """
+    if not val:
+        return ""
+    if val.lower() == "none":
+        return "none"
+
+    try:
+        if "." in val:
+            # Colapsar ceros a la derecha y puntos sobrantes
+            clean = str(float(val)).rstrip("0").rstrip(".")
+            return clean if clean != "" else "0"
+        return str(int(val))
+    except (ValueError, TypeError):
+        return val.lower() if isinstance(val, str) else val
+
+
 def audit_and_cleanup(
     target_path, aggregate_data, mode, start_val, end_val, skip_oneshots
 ):
@@ -17,43 +37,39 @@ def audit_and_cleanup(
     Realiza una auditoría inteligente y limpia huérfanos bajados por error.
     Usa la estructura real informada por la API de MangaDex.
     """
-    if not aggregate_data:
-        return  # Si no hay datos de la API, fall in safe mode (no borrar nada)
-
     expected_chapters = set()
 
     if mode == "v":
+        if not aggregate_data:
+            logger.warning("Modo Volumen: Sin datos de la API. Safe Mode activado (sin limpieza).")
+            return
+
         volumes_to_check = parse_range(start_val, end_val)
         for expected_vol in volumes_to_check:
             # Buscar la key exacta del volumen ("1", "S1", "none")
             vol_data = aggregate_data.get(expected_vol)
             if not vol_data:
                 # Intento fallback para tratar "1.0" como "1" o viceversa
-                fallback_key = (
-                    str(int(float(expected_vol)))
-                    if expected_vol.replace(".", "", 1).isdigit()
-                    and expected_vol.endswith(".0")
-                    else expected_vol
-                )
+                fallback_key = _normalize_chapter_number(expected_vol)
                 vol_data = aggregate_data.get(fallback_key)
 
             if vol_data and "chapters" in vol_data:
                 for ch_dict in vol_data["chapters"].values():
-                    # Solo añadir si no hemos decidido ignorar unoshoots
+                    # Solo añadir si no hemos decidido ignorar oneshoots
                     is_oneshot = (
                         ch_dict.get("chapter") == "none"
                         or ch_dict.get("chapter") is None
                     )
                     if is_oneshot and skip_oneshots:
                         continue
-                    # La key del diccionario es casi siempre el numero del capitulo
-                    if ch_dict.get("chapter") != "none":
-                        expected_chapters.add(str(ch_dict.get("chapter")))
+                    # Normalizar antes de añadir a la whitelist
+                    ch_val = str(ch_dict.get("chapter", "none"))
+                    expected_chapters.add(_normalize_chapter_number(ch_val))
 
     else:  # Modo Capítulo
         chapters_to_check = parse_range(start_val, end_val)
         for expected_ch in chapters_to_check:
-            expected_chapters.add(str(expected_ch))
+            expected_chapters.add(_normalize_chapter_number(str(expected_ch)))
 
     # Leer archivos locales
     all_cbz = glob.glob(os.path.join(target_path, "*.cbz"))
@@ -64,29 +80,17 @@ def audit_and_cleanup(
     for cbz_file in all_cbz:
         filename = os.path.basename(cbz_file)
 
+        # Patrón robusto para capítulos decimales y enteros
         # mangadex-dl suele poner "- Ch. XX" o "Chapter XX" al final
-        # Funciona con variaciones "Ch. 5", "Ch. 5.5", "Ch. none"
-        match = re.search(r"Ch\.\s*([\d\.]+|none)\b", filename, re.IGNORECASE)
-        if not match:
-            match = re.search(r"Chapter\s*([\d\.]+|none)\b", filename, re.IGNORECASE)
+        pattern = r"(?:Ch\.|Chapter)\s*(\d+(?:\.\d+)?|none)\b"
+        match = re.search(pattern, filename, re.IGNORECASE)
 
         if match:
-            local_chap = match.group(1)
-            # Manejar ceros a la izquierda que mangadex-dl pudiera haber puesto
-            if local_chap.replace(".", "", 1).isdigit():
-                if "." in local_chap:
-                    local_chap_clean = str(float(local_chap)).rstrip("0").rstrip(".")
-                    if local_chap_clean == "":
-                        local_chap_clean = "0"
-                else:
-                    local_chap_clean = str(int(local_chap))
-            else:
-                local_chap_clean = local_chap  # "none" u otros strings
-
+            local_chap_raw = match.group(1)
+            local_chap_clean = _normalize_chapter_number(local_chap_raw)
             found_chapters.add(local_chap_clean)
 
-            # Limpieza (Orphans) segun Whitelist de la API
-            # Solo limpiamos si logramos extraer una lista de expecteds valida
+            # Limpieza (Orphans) segun Whitelist
             if expected_chapters and local_chap_clean not in expected_chapters:
                 # Advertencia: Si es un Oneshot ("none") y el usuario no pidio borrarlos, no truncar
                 if local_chap_clean == "none" and not skip_oneshots:
@@ -103,10 +107,10 @@ def audit_and_cleanup(
         else:
             # Si mangadex-dl lo descargo como volumen completo sin separar por capítulos
             if mode == "v":
-                # El archivo Vol. X.cbz agrupa todo. Asumimos que contiene lo esperado
-                # para evitar falsos positivos en el warning de faltantes.
                 found_chapters.update(expected_chapters)
+
     if expected_chapters:
+
         missing = expected_chapters - found_chapters
         if missing:
             logger.warning(

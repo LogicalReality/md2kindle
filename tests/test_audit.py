@@ -64,29 +64,22 @@ class TestAuditAndCleanup:
     # --- Nuevos escenarios ---
 
     def test_decimal_chapter_parsing(self, monkeypatch):
-        """El regex parsea capítulos enteros correctamente.
-
-        Nota: capítulos decimales como '5.5' en nombres de archivo tipo
-        'Ch. 5.5.cbz' tienen un edge case conocido donde el regex captura
-        el dot del .cbz. Los archivos reales de mangadex-dl usan formato
-        'Ch. 5.5 - Title.cbz' donde el espacio actúa como boundary.
-        """
+        """El regex parsea capítulos decimales sin capturar el punto de la extensión."""
         aggregate = {
             "1": {
                 "chapters": {
-                    "5": {"chapter": "5", "page": 1},
-                    "6": {"chapter": "6", "page": 1},
+                    "5.5": {"chapter": "5.5", "page": 1},
                 }
             }
         }
         removed = []
         monkeypatch.setattr(audit.glob, "glob", lambda _: [
-            "/fake/Manga - Ch. 5 - Title.cbz",
-            "/fake/Manga - Ch. 6 - Title.cbz",
+            "/fake/Manga - Ch. 5.5.cbz",  # Caso difícil (punto pegado a extensión)
         ])
         monkeypatch.setattr(audit.os, "remove", lambda p: removed.append(p))
         audit.audit_and_cleanup("/fake", aggregate, "v", "1", "1", False)
-        assert removed == []
+        assert removed == []  # No debería borrarlo si lo parsea bien como "5.5"
+
 
     def test_volume_cbz_assumes_complete(self, monkeypatch):
         """Archivo Vol. X.cbz (sin Ch.) asume que contiene todo el volumen."""
@@ -108,23 +101,19 @@ class TestAuditAndCleanup:
         assert removed == []
 
     def test_chapter_mode_uses_range_not_aggregate(self, monkeypatch):
-        """En modo capítulo, usa parse_range para la whitelist (no el aggregate).
-
-        Nota: necesitamos pasar aggregate no vacío porque la función tiene
-        un early-return en aggregate vacío (safe mode global, línea 20).
-        """
-        aggregate = {"dummy": {}}  # No vacío para evitar safe mode
+        """En modo capítulo, limpia huérfanos incluso con aggregate vacío."""
         removed = []
         monkeypatch.setattr(audit.glob, "glob", lambda _: [
-            "/fake/Manga - Ch. 1 - Title.cbz",
-            "/fake/Manga - Ch. 2 - Title.cbz",
-            "/fake/Manga - Ch. 99 - Title.cbz",
+            "/fake/Manga - Ch. 1.cbz",
+            "/fake/Manga - Ch. 2.cbz",
+            "/fake/Manga - Ch. 99.cbz",
         ])
         monkeypatch.setattr(audit.os, "remove", lambda p: removed.append(p))
-        # Rango 1-2, capítulo 99 está fuera
-        audit.audit_and_cleanup("/fake", aggregate, "c", "1", "2", False)
-        assert "/fake/Manga - Ch. 99 - Title.cbz" in removed
-        assert "/fake/Manga - Ch. 1 - Title.cbz" not in removed
+        # Rango 1-2, capítulo 99 está fuera. Aggregate vacío NO debería bloquear esto.
+        audit.audit_and_cleanup("/fake", {}, "c", "1", "2", False)
+        assert "/fake/Manga - Ch. 99.cbz" in removed
+        assert "/fake/Manga - Ch. 1.cbz" not in removed
+
 
     def test_complete_download_reports_no_missing(self, monkeypatch, capsys):
         """Descarga completa no genera warnings de faltantes."""
@@ -143,3 +132,22 @@ class TestAuditAndCleanup:
         monkeypatch.setattr(audit.os, "remove", lambda _: None)
         # Si no hay faltantes, no debería haber excepciones
         audit.audit_and_cleanup("/fake", aggregate, "v", "1", "1", False)
+
+class TestNormalizeChapterNumber:
+    """Tests para la función interna de normalización."""
+
+    def test_normalizes_integers(self):
+        assert audit._normalize_chapter_number("05") == "5"
+        assert audit._normalize_chapter_number("5") == "5"
+
+    def test_normalizes_decimals(self):
+        assert audit._normalize_chapter_number("5.0") == "5"
+        assert audit._normalize_chapter_number("5.50") == "5.5"
+        assert audit._normalize_chapter_number("5.5") == "5.5"
+
+    def test_handles_none(self):
+        assert audit._normalize_chapter_number("none") == "none"
+        assert audit._normalize_chapter_number("NONE") == "none"
+
+    def test_handles_invalid(self):
+        assert audit._normalize_chapter_number("abc") == "abc"

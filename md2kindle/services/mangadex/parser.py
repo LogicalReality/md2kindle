@@ -87,5 +87,6 @@ def parse_manga_data(manga_data: dict) -> tuple[list[dict], str]:
 def parse_aggregate_data(data: dict) -> dict:
     """Extrae los volúmenes del payload de aggregate."""
     if data and data.get("result") == "ok":
-        return data.get("volumes", {})
+        volumes = data.get("volumes", {})
+        return volumes if isinstance(volumes, dict) else {}
     return {}

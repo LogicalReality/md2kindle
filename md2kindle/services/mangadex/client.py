@@ -3,6 +3,7 @@
 import logging
 import json
 import urllib.request
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +12,8 @@ def fetch_json(url: str) -> dict | None:
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode())
+            res_data = json.loads(response.read().decode())
+            return cast(dict, res_data) if isinstance(res_data, dict) else None
     except Exception as e:
         # Silencioso para no romper el flujo principal si la API falla
         return None
