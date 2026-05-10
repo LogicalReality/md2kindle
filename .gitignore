@@ -39,3 +39,5 @@ cloudflare_roadmap.md
 build/
 dist/
 *.egg-info/
+scratch/
+

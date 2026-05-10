@@ -17,6 +17,10 @@ def _normalize_chapter_number(val):
     """
     if not val:
         return ""
+
+    if not isinstance(val, str):
+        val = str(val)
+
     if val.lower() == "none":
         return "none"
 
