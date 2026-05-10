@@ -12,13 +12,36 @@ from md2kindle.core.models import format_manga_title
 logger = logging.getLogger(__name__)
 
 
+class KccConverter:
+    """Adapter para el servicio de conversión KCC."""
+
+    def __init__(self, app_config: AppConfig | None = None):
+        self._config = app_config or APP_CONFIG
+
+    def convert(
+        self,
+        target_path: str,
+        author: str,
+        title: str,
+        vol_hint: str | None = None,
+    ) -> list[str]:
+        """Delega la conversión a convert_with_kcc."""
+        return convert_with_kcc(
+            target_path=target_path,
+            author=author,
+            title=title,
+            vol_hint=vol_hint,
+            app_config=self._config,
+        )
+
+
 def convert_with_kcc(
     target_path,
     author="MangaDex",
     title=None,
     vol_hint=None,
     app_config: AppConfig | None = None,
-):
+) -> list[str]:
     """Convierte archivos CBZ en Kindle-friendly formats reflejando la estructura original"""
     app_config = app_config or APP_CONFIG
     search_pattern = os.path.join(target_path, "**", "*.cbz")
@@ -29,7 +52,7 @@ def convert_with_kcc(
     if not cbz_files:
         cbz_files = glob.glob(os.path.join(target_path, "*.cbz"))
         if not cbz_files:
-            return
+            return []
 
     # Calcular ruta de salida replicando la estructura de carpetas
     try:

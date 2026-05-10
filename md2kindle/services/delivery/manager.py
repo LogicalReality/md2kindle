@@ -16,6 +16,25 @@ from md2kindle.core.models import PipelineContext, format_manga_title
 logger = logging.getLogger(__name__)
 
 
+class DeliveryManager:
+    """Adapter para el servicio de entrega de archivos."""
+
+    def __init__(self, app_config: AppConfig | None = None):
+        self._config = app_config or APP_CONFIG
+
+    def deliver(
+        self,
+        files: list[str],
+        context: PipelineContext,
+    ) -> None:
+        """Delega la entrega a deliver_files."""
+        deliver_files(
+            mobi_files=files,
+            params=context,
+            app_config=self._config,
+        )
+
+
 def ask_fallback_choice(
     file_count: int, input_func: Callable[[str], str] = input
 ) -> str:

@@ -189,12 +189,16 @@ class TestMainApproval:
             calls.append(("audit", args[2], args[3]))
             return True
 
-        def mock_convert(*args, **kwargs):
-            calls.append(("convert", args[0]))
-            return ["test_vol_1.mobi"]
+        class MockConverter:
+            def __init__(self, *args, **kwargs): pass
+            def convert(self, target_path, author, title, vol_hint=None):
+                calls.append(("convert", target_path))
+                return ["test_vol_1.mobi"]
 
-        def mock_deliver(files, params):
-            calls.append(("deliver", files, params.manga.title))
+        class MockDeliverer:
+            def __init__(self, *args, **kwargs): pass
+            def deliver(self, files, params):
+                calls.append(("deliver", files, params.manga.title))
 
         glob_calls = []
 
@@ -208,8 +212,8 @@ class TestMainApproval:
         monkeypatch.setattr(pipeline, "get_manga_aggregate", mock_aggregate)
         monkeypatch.setattr(pipeline, "download_manga", mock_download)
         monkeypatch.setattr(pipeline, "audit_and_cleanup", mock_audit)
-        monkeypatch.setattr(pipeline, "convert_with_kcc", mock_convert)
-        monkeypatch.setattr(pipeline, "deliver_files", mock_deliver)
+        monkeypatch.setattr(pipeline, "KccConverter", MockConverter)
+        monkeypatch.setattr(pipeline, "DeliveryManager", MockDeliverer)
         monkeypatch.setattr(pipeline.glob, "glob", mock_glob)
 
         cli.main()

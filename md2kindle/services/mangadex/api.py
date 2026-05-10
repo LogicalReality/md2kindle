@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 def get_manga_title_options(url):
     """Consulta la API de MangaDex para obtener títulos, autor real y sugerencias de contexto"""
-    suggestions = {"mode": None, "start": None, "vol": None, "lang": None}
+    suggestions: dict[str, str | None] = {"mode": None, "start": None, "vol": None, "lang": None}
     try:
         link_type, uuid = extract_uuid_from_url(url)
         if not link_type or not uuid:
@@ -20,17 +20,21 @@ def get_manga_title_options(url):
         if link_type == "chapter":
             logger.info("Detectada URL de capítulo. Buscando manga asociado...")
             chap_data = get_chapter(uuid)
-            start, vol, lang, rel_manga_uuid = parse_chapter_data(chap_data)
-            
-            suggestions["mode"] = "c"
-            suggestions["start"] = start
-            suggestions["vol"] = vol
-            suggestions["lang"] = lang
-            
-            if rel_manga_uuid:
-                manga_uuid = rel_manga_uuid
+            if chap_data:
+                start, vol, lang, rel_manga_uuid = parse_chapter_data(chap_data)
+                
+                suggestions["mode"] = "c"
+                suggestions["start"] = start
+                suggestions["vol"] = vol
+                suggestions["lang"] = lang
+                
+                if rel_manga_uuid:
+                    manga_uuid = rel_manga_uuid
 
         manga_data = get_manga(manga_uuid)
+        if not manga_data:
+            return [], "MangaDex", suggestions, manga_uuid
+
         unique_options, author_name = parse_manga_data(manga_data)
 
         return unique_options, author_name, suggestions, manga_uuid
@@ -42,7 +46,9 @@ def get_manga_aggregate(manga_uuid, lang):
     """Obtiene la estructura completa de Tomos y Capítulos desde MangaDex"""
     try:
         data = get_aggregate(manga_uuid, lang)
-        return parse_aggregate_data(data)
+        if data:
+            return parse_aggregate_data(data)
+        return {}
     except Exception as e:
         logger.warning("No se pudo obtener la estructura de auditoría: %s", e)
         return {}

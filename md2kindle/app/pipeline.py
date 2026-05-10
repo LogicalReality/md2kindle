@@ -10,8 +10,9 @@ import glob
 import shutil
 
 from md2kindle.core.config import APP_CONFIG, AppConfig
-from md2kindle.services.converter import convert_with_kcc
-from md2kindle.services.delivery.manager import deliver_files
+from md2kindle.core.ports import Converter, Deliverer
+from md2kindle.services.converter import KccConverter
+from md2kindle.services.delivery.manager import DeliveryManager
 from md2kindle.services.mangadex import (
     get_manga_aggregate,
     build_chapter_lang_map,
@@ -33,6 +34,7 @@ def _config_kwargs(explicit_config: bool, app_config: AppConfig) -> dict:
 def process_volume_flow(
     params: PipelineContext, vol: str, base_path: str,
     aggregate_data: dict, fallback_aggregates: dict, lang_priority: list[str],
+    converter: Converter,
     app_config: AppConfig | None = None,
 ) -> list[str]:
     """Procesa un volumen individual: descarga → auditoría → conversión y retorna archivos.
@@ -119,8 +121,11 @@ def process_volume_flow(
         shutil.rmtree(folder, ignore_errors=True)
         return []
 
-    mobi_list = convert_with_kcc(
-        folder, params.manga.author, params.manga.title, vol_hint=vol, **config_kwargs
+    mobi_list = converter.convert(
+        target_path=folder,
+        author=params.manga.author,
+        title=params.manga.title,
+        vol_hint=vol,
     )
     return mobi_list or []
 
@@ -130,6 +135,7 @@ def process_chapter_flow(
     params: PipelineContext,
     base_path: str,
     aggregate_data: dict,
+    converter: Converter,
     app_config: AppConfig | None = None,
 ) -> list[str]:
     """Procesa un rango de capítulos: descarga → auditoría → conversión y retorna archivos."""
@@ -193,17 +199,28 @@ def process_chapter_flow(
             shutil.rmtree(folder, ignore_errors=True)
             return []
 
-        mobi_list = convert_with_kcc(
-            folder, params.manga.author, params.manga.title, vol_hint=suffix, **config_kwargs
+        mobi_list = converter.convert(
+            target_path=folder,
+            author=params.manga.author,
+            title=params.manga.title,
+            vol_hint=suffix,
         )
         return mobi_list or []
 
 
 
-def run(params: PipelineContext, app_config: AppConfig | None = None) -> None:
+def run(
+    params: PipelineContext,
+    converter: Converter | None = None,
+    deliverer: Deliverer | None = None,
+    app_config: AppConfig | None = None,
+) -> None:
     """Ejecuta el pipeline completo con los parámetros resueltos."""
     explicit_config = app_config is not None
     app_config = app_config or APP_CONFIG
+    converter = converter or KccConverter(app_config)
+    deliverer = deliverer or DeliveryManager(app_config)
+
     config_kwargs = _config_kwargs(explicit_config, app_config)
     base_path = os.path.join(app_config.output_folder_manga, params.manga.title)
 
@@ -235,6 +252,7 @@ def run(params: PipelineContext, app_config: AppConfig | None = None) -> None:
                 aggregate_data,
                 fallback_aggregates,
                 lang_priority,
+                converter=converter,
                 **config_kwargs,
             )
             all_mobi_files.extend(generated)
@@ -256,11 +274,11 @@ def run(params: PipelineContext, app_config: AppConfig | None = None) -> None:
             chapter_params = replace(params, manga=replace(params.manga, lang=resolved_lang))
 
         generated = process_chapter_flow(
-            chapter_params, base_path, aggregate_data, **config_kwargs
+            chapter_params, base_path, aggregate_data, converter=converter, **config_kwargs
         )
         all_mobi_files.extend(generated)
 
-    deliver_files(all_mobi_files, params, **config_kwargs)
+    deliverer.deliver(all_mobi_files, params)
 
     logger.info("=========================================")
     logger.info(

@@ -141,6 +141,9 @@ def download_manga(
     app_config: AppConfig | None = None,
 ):
     app_config = app_config or APP_CONFIG
+    ffsend_bin: str | None = app_config.binaries.ffsend
+    if ffsend_bin == "ffsend" and not shutil.which("ffsend"):
+        ffsend_bin = None
     if mode == "v":
         save_as = "cbz-volume"
         range_args = ["--start-volume", start_val, "--end-volume", end_val]
@@ -243,7 +246,7 @@ def download_volume_mixed(
     app_config = app_config or APP_CONFIG
 
     # 1. Agrupar capítulos por idioma
-    lang_groups = {}
+    lang_groups: dict[str, list[str]] = {}
     for chapter, lang in chapter_lang_map.items():
         lang_groups.setdefault(lang, []).append(chapter)
 
