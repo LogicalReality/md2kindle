@@ -111,5 +111,7 @@ def convert_with_kcc(
                     os.remove(cbz_file)
         except Exception as e:
             logger.error("Excepción al ejecutar KCC: %s", e)
+            from md2kindle.core.exceptions import ConversionError
+            raise ConversionError(f"Fallo crítico en KCC: {e}") from e
 
     return generated_files

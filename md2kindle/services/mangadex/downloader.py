@@ -10,6 +10,7 @@ import zipfile
 
 from md2kindle.core.config import APP_CONFIG, AppConfig
 from md2kindle.utils.ranges import parse_range
+from md2kindle.core.exceptions import DownloadError
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +182,7 @@ def download_manga(
             return False
     except Exception as e:
         logger.error("Excepción al ejecutar mangadex-dl: %s", e)
-        return False
+        raise DownloadError(f"Fallo crítico al ejecutar mangadex-dl: {e}") from e
 
 
 def _group_contiguous_ranges(chapters):
@@ -285,6 +286,7 @@ def download_volume_mixed(
                     logger.warning("Falló descarga de caps %s-%s en '%s'", start_ch, end_ch, lang)
             except Exception as e:
                 logger.error("Excepción al descargar caps %s-%s: %s", start_ch, end_ch, e)
+                raise DownloadError(f"Fallo crítico en descarga de caps {start_ch}-{end_ch}: {e}") from e
 
     # 4. Empaquetar todo en un único CBZ para que KCC lo procese como un volumen
     if any_success:
@@ -316,5 +318,6 @@ def download_volume_mixed(
             logger.info("Empaquetado exitoso: %s", cbz_path)
         except Exception as e:
             logger.error("Error al empaquetar CBZ mixto: %s", e)
+            raise DownloadError(f"Fallo al empaquetar volumen mixto: {e}") from e
 
     return any_success
