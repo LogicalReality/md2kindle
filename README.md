@@ -16,6 +16,7 @@ An automation pipeline to download manga from [MangaDex](https://mangadex.org) a
    git clone https://github.com/LogicalReality/md2kindle.git
    cd md2kindle
    pip install -e .
+   copy .env.example .env
    ```
 
 3. **Execute**: Run `run.bat` (Windows) or `python md2kindle.py`.
@@ -50,8 +51,8 @@ graph LR
 ```
 
 1. **The Source**: Fetches metadata and images from MangaDex.
-2. **The Forge**: Uses Kindle Comic Converter (KCC) to optimize images for e-ink displays.
-3. **The Courier**: Delivers the final `.mobi` file to your preferred destination.
+2. **The Forge**: Packages chapters as CBZ and uses Kindle Comic Converter (KCC) to optimize them for e-ink displays.
+3. **The Courier**: Delivers the final ereader file (`.mobi` by default) to your preferred destination.
 
 ## Details
 
