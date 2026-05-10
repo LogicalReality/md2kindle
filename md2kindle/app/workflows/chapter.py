@@ -16,9 +16,7 @@ from md2kindle.services.mangadex import (
 logger = logging.getLogger(__name__)
 
 
-def _config_kwargs(explicit_config: bool, app_config: AppConfig) -> dict:
-    """Pasa AppConfig solo cuando el caller lo inyectó explícitamente."""
-    return {"app_config": app_config} if explicit_config else {}
+from md2kindle.app.context import config_kwargs as _config_kwargs
 
 
 def process_chapter_flow(

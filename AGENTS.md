@@ -20,27 +20,37 @@ Python-based automation pipeline that fetches manga from MangaDex, processes it 
 md2kindle.py          # Entrypoint (thin wrapper)
 md2kindle/
 ├── app/
-│   ├── cli.py        # argparse + interactive mode → PipelineParams → pipeline.run()
-│   └── pipeline.py   # orchestrates: download → audit → convert → deliver
+│   ├── cli.py        # argparse + interactive mode → PipelineContext → pipeline.run()
+│   ├── context.py    # shared helpers (config_kwargs)
+│   ├── pipeline.py   # orchestrates: download → audit → convert → deliver
+│   └── workflows/
+│       ├── volume.py  # volume processing flow
+│       └── chapter.py # chapter/range processing flow
 ├── core/
 │   ├── config/
 │   │   ├── settings.py  # AppConfig dataclass, .env loading, constants
 │   │   └── binaries.py  # binary resolution: bin/ folder → system PATH → venv
 │   ├── models/
-│   │   └── pipeline.py  # PipelineParams, format_manga_title()
-│   └── logging/
-│       └── setup.py     # centralized logging (--silent = WARNING level)
+│   │   └── pipeline.py  # PipelineContext, MangaContext, DownloadRange, DeliveryOptions
+│   ├── exceptions/      # hierarchy: Md2KindleError → Config/Download/Conversion/DeliveryError
+│   ├── logging/
+│   │   └── setup.py     # centralized logging (--silent = WARNING level)
+│   └── ports.py         # Protocols: Converter, Deliverer (DI interfaces)
 ├── services/
 │   ├── converter/
-│   │   └── service.py   # CBZ → MOBI via kcc_c2e subprocess
+│   │   └── engine.py    # CBZ → MOBI via kcc_c2e subprocess
 │   ├── mangadex/
-│   │   ├── api.py       # MangaDex REST API calls (title lookup, aggregate structure)
-│   │   └── downloader.py # mangadex-dl subprocess, audit_and_cleanup, mixed-lang download
+│   │   ├── client.py       # MangaDex HTTP client
+│   │   ├── parser.py       # API response parsing
+│   │   ├── resolver.py     # title/UUID resolution
+│   │   ├── downloader.py   # mangadex-dl CLI wrapper
+│   │   ├── audit.py        # post-download integrity audit & orphan cleanup
+│   │   └── mixed_download.py # multi-language download orchestration + CBZ packing
 │   └── delivery/
-│       ├── service.py   # orchestration: USB → R2 → Telegram → interactive fallback
+│       ├── manager.py   # orchestration: USB → R2 → Telegram → interactive fallback
 │       ├── telegram.py  # Telegram Bot API (direct upload or ffsend for >45MB)
 │       ├── r2.py        # Cloudflare R2 via boto3 (presigned URLs, 7-day expiry)
-│       ├── usb.py       # Kindle USB detection (Windows: MTP + mass storage)
+│       ├── usb.py       # cross-platform Kindle USB detection (Windows/Linux/macOS)
 │       ├── ffsend.py    # E2EE upload via ffsend binary (send.vis.ee)
 │       └── d1.py        # optional download history logging to Cloudflare D1
 └── utils/
@@ -54,13 +64,14 @@ md2kindle/
 - **Granular Fallback**: Language priority: `es-la` → `en` → `es` (evaluated per-chapter).
 - **KCC Defaults**: Profile `KO` (Oasis/Paperwhite), Format `MOBI` (Dual mode).
 - **Idempotency**: Skips download if `.cbz` exists; skips conversion if `.mobi` exists.
+- **Protocols**: `Converter` and `Deliverer` define DI interfaces in `core/ports.py`.
 
 ## Environment
 
 - [ ] **Python**: 3.13 installed.
 - [ ] **External Binaries**: `mangadex-dl`, `kcc_c2e`, `ffsend` placed in `bin/` or PATH.
 - [ ] **Environment**: `.env` populated for cloud features.
-- [ ] **Verification**: Run `pytest` (Expect 29 tests passing).
+- [ ] **Verification**: Run `pytest` (Expect 63 tests passing).
 
 ## Testing & Troubleshooting
 

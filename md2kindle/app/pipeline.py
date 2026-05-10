@@ -13,17 +13,15 @@ from md2kindle.services.converter import KccConverter
 from md2kindle.services.delivery.manager import DeliveryManager
 from md2kindle.services.mangadex import (
     get_manga_aggregate,
-    parse_range,
 )
+from md2kindle.utils.ranges import parse_range
 from md2kindle.core.models import PipelineContext
 from md2kindle.app.workflows import process_volume_flow, process_chapter_flow
 
 logger = logging.getLogger(__name__)
 
 
-def _config_kwargs(explicit_config: bool, app_config: AppConfig) -> dict:
-    """Pasa AppConfig solo cuando el caller lo inyectó explícitamente."""
-    return {"app_config": app_config} if explicit_config else {}
+from md2kindle.app.context import config_kwargs as _config_kwargs
 
 
 def run(
