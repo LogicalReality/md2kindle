@@ -86,3 +86,9 @@ md2kindle/
 
 - **GitHub Actions**: `.github/workflows/manga-pipeline.yml` handles manual/cron dispatch.
 - **Telegram Bot**: Cloudflare Worker (`.github/workers/telegram-bot.js`) triggers CI via REST.
+
+## Non-goals
+
+- **GUI Implementation**: The project is strictly CLI/headless-first.
+- **Direct Image Processing**: All conversion logic is delegated to KCC; we do not manipulate individual images.
+- **Multi-Source Support**: We only support MangaDex as the source.

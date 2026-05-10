@@ -2,7 +2,10 @@
 
 **English** | [🌐 Español](README.es.md)
 
-An automation pipeline to download manga from [MangaDex](https://mangadex.org) and convert it into Kindle-optimized formats (`.mobi`/`.azw3`).
+An automation pipeline to download manga from [MangaDex](https://mangadex.org) and convert it into Kindle-optimized formats.
+
+> [!NOTE]
+> MOBI is the default output. AZW3 may be supported depending on KCC settings.
 
 ## Quick Start
 
@@ -33,7 +36,7 @@ An automation pipeline to download manga from [MangaDex](https://mangadex.org) a
 ```mermaid
 graph LR
     MD[MangaDex API] -->|Download| DL(Downloader)
-    DL -->|Audit & Audit| AD(Audit Service)
+    DL -->|Audit| AD(Audit Service)
     AD -->|Convert| CV(KCC Engine)
     CV -->|Deliver| DV(Delivery Manager)
     DV -->|USB| K(Kindle Device)
