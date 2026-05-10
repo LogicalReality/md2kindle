@@ -209,12 +209,13 @@ class TestMainApproval:
         monkeypatch.setattr(cli.os.path, "exists", mock_exists)
         monkeypatch.setattr(cli.shutil, "which", mock_which)
         monkeypatch.setattr(cli, "resolve_parameters", mock_resolve)
+        from md2kindle.app.workflows import volume
         monkeypatch.setattr(pipeline, "get_manga_aggregate", mock_aggregate)
-        monkeypatch.setattr(pipeline, "download_manga", mock_download)
-        monkeypatch.setattr(pipeline, "audit_and_cleanup", mock_audit)
+        monkeypatch.setattr(volume, "download_manga", mock_download)
+        monkeypatch.setattr(volume, "audit_and_cleanup", mock_audit)
         monkeypatch.setattr(pipeline, "KccConverter", MockConverter)
         monkeypatch.setattr(pipeline, "DeliveryManager", MockDeliverer)
-        monkeypatch.setattr(pipeline.glob, "glob", mock_glob)
+        monkeypatch.setattr(volume.glob, "glob", mock_glob)
 
         cli.main()
 
