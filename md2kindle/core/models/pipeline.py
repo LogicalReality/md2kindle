@@ -14,4 +14,5 @@ class PipelineContext:
     manga: MangaContext
     range: DownloadRange
     delivery: DeliveryOptions
-    silent: bool
+    sync: bool = False
+    silent: bool = False

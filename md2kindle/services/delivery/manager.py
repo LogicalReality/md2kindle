@@ -105,11 +105,17 @@ def deliver_files(
         return
 
     usb_detected = False
-    for mobi_file in mobi_files:
-        if send_to_usb(mobi_file, params.manga.title, app_config=app_config):
-            usb_detected = True
+    if send_to_usb(mobi_files, params.manga.title, app_config=app_config):
+        usb_detected = True
+        for mobi_file in mobi_files:
             manga, vol = format_manga_title(mobi_file, app_config.output_folder_kcc)
             log_download(manga, vol, params.manga.lang, mobi_file, "usb", app_config=app_config)
+        
+        # Si el envío por USB fue exitoso, no necesitamos enviarlo a la nube
+        # a menos que no haya sido una sincronización (pipeline normal)
+        # Pero siguiendo tu feedback: si ya está en el Kindle, no hace falta R2.
+        logger.info("Envío por USB exitoso. Omitiendo otros métodos de entrega.")
+        return
 
     if params.delivery.r2:
         for mobi_file in mobi_files:
@@ -119,9 +125,6 @@ def deliver_files(
     if params.delivery.telegram:
         for mobi_file in mobi_files:
             _deliver_via_telegram(mobi_file, params, app_config)
-        return
-
-    if usb_detected:
         return
 
     is_interactive = len(sys.argv) <= 1

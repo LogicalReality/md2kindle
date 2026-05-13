@@ -101,3 +101,40 @@ def run(
         app_config.output_folder_kcc,
     )
     logger.info("=========================================")
+
+
+def sync_usb(app_config: AppConfig | None = None) -> int:
+    """Escanea la carpeta de salida de KCC y sincroniza los .mobi con el USB."""
+    from md2kindle.services.delivery.usb import send_to_usb
+    from md2kindle.core.models.delivery import format_manga_title
+
+    app_config = app_config or APP_CONFIG
+    folder = app_config.output_folder_kcc
+    
+    if not os.path.exists(folder):
+        logger.warning("La carpeta de salida '%s' no existe. Nada que sincronizar.", folder)
+        return 0
+
+    logger.info("Iniciando sincronización USB desde: %s", folder)
+    manga_batches = {}  # {manga_title: [list_of_paths]}
+    
+    for root, _, files in os.walk(folder):
+        for file in files:
+            if file.lower().endswith(".mobi"):
+                full_path = os.path.join(root, file)
+                try:
+                    manga, _ = format_manga_title(full_path, folder)
+                    if manga not in manga_batches:
+                        manga_batches[manga] = []
+                    manga_batches[manga].append(full_path)
+                except Exception as e:
+                    logger.error("Error identificando %s: %s", file, e)
+
+    processed_count = 0
+    for manga, paths in manga_batches.items():
+        logger.info("Sincronizando lote de %d archivo(s) para: %s", len(paths), manga)
+        if send_to_usb(paths, manga, app_config=app_config):
+            processed_count += len(paths)
+
+    logger.info("Sincronización finalizada. %d archivos procesados.", processed_count)
+    return processed_count

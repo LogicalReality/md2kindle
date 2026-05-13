@@ -48,6 +48,9 @@ def resolve_parameters() -> PipelineContext:
     parser.add_argument(
         "--r2", action="store_true", help="Subir a Cloudflare R2 y enviar URL por Telegram"
     )
+    parser.add_argument(
+        "--sync", action="store_true", help="Sincronizar carpeta local con USB Kindle"
+    )
 
     args = parser.parse_args()
 
@@ -60,18 +63,20 @@ def resolve_parameters() -> PipelineContext:
 
     url = args.url_flag or args.url
 
-    if not url and is_interactive:
+    if not url and not args.sync and is_interactive:
         clear_screen()
         print("=========================================")
         print(" MangaDex -> Kindle Converter (md2kindle)")
         print("=========================================")
         url = input("\n> URL de MangaDex: ").strip()
-    elif not url:
+    elif not url and not args.sync:
         print("[ERROR] Se requiere URL (posicional o --url) en modo no interactivo.")
         sys.exit(1)
 
-    # Inferencia inteligente desde la URL
-    options, author_name, suggestions, manga_uuid = get_manga_title_options(url)
+    # Inferencia inteligente desde la URL (solo si hay URL)
+    options, author_name, suggestions, manga_uuid = ([], "MangaDex", {}, None)
+    if url:
+        options, author_name, suggestions, manga_uuid = get_manga_title_options(url)
 
     # Redirección Canónica
     download_url = f"https://mangadex.org/title/{manga_uuid}" if manga_uuid else url
@@ -182,6 +187,7 @@ def resolve_parameters() -> PipelineContext:
             telegram=args.telegram,
             r2=args.r2,
         ),
+        sync=args.sync,
         silent=silent,
     )
 
@@ -207,5 +213,8 @@ def main():
     # Configurar logging DESPUÉS de resolver parámetros (necesitamos saber si --silent)
     setup_logging(silent=params.silent)
 
-    pipeline.run(params)
+    if params.sync:
+        pipeline.sync_usb()
+    else:
+        pipeline.run(params)
 
