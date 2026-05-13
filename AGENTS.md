@@ -53,7 +53,11 @@ md2kindle/
 │       ├── manager.py   # orchestration: USB → R2 → Telegram → interactive fallback
 │       ├── telegram.py  # Telegram Bot API (direct upload or ffsend for >45MB)
 │       ├── r2.py        # Cloudflare R2 via boto3 (presigned URLs, 7-day expiry)
-│       ├── usb.py       # cross-platform Kindle USB detection (Windows/Linux/macOS)
+│       ├── usb/         # cross-platform Kindle delivery package
+│       │   ├── __init__.py  # facade & orchestration
+│       │   ├── discovery.py # multi-OS device detection
+│       │   ├── mass_storage.py # standard copy logic
+│       │   └── mtp.py       # Windows MTP bridge & interactive sync
 │       ├── ffsend.py    # E2EE upload via ffsend binary (send.vis.ee)
 │       └── d1.py        # optional download history logging to Cloudflare D1
 └── utils/
