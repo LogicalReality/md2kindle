@@ -31,12 +31,12 @@ on:
         default: true
         type: boolean
       use_r2:
-        description: 'Subir a Cloudflare R2 y enviar link'
+        description: 'Cloudflare R2 (Link por Telegram)'
         required: true
         default: true
         type: boolean
       use_telegram:
-        description: 'Enviar archivo directamente por Telegram'
+        description: 'Telegram (Archivo Directo + ffsend fallback)'
         required: true
         default: true
         type: boolean
