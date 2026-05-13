@@ -3,15 +3,18 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 
+from md2kindle.core.config import APP_CONFIG, AppConfig
+
 logger = logging.getLogger(__name__)
 
-def get_r2_client():
-    account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID")
-    access_key = os.environ.get("R2_ACCESS_KEY_ID")
-    secret_key = os.environ.get("R2_SECRET_ACCESS_KEY")
+def get_r2_client(app_config: AppConfig | None = None):
+    config = app_config or APP_CONFIG
+    account_id = config.r2_account_id
+    access_key = config.r2_access_key_id
+    secret_key = config.r2_secret_access_key
 
     if not all([account_id, access_key, secret_key]):
-        logger.error("Faltan variables de entorno para Cloudflare R2 (CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)")
+        logger.error("No se configuraron las credenciales de Cloudflare R2 (Account ID / Access Key / Secret Key).")
         return None
 
     # URL del endpoint de R2 para tu cuenta
@@ -30,7 +33,7 @@ def get_r2_client():
         logger.error(f"Error al inicializar cliente R2: {e}")
         return None
 
-def send_to_r2(filepath: str, manga: str, vol: str) -> str | None:
+def send_to_r2(filepath: str, manga: str, vol: str, app_config: AppConfig | None = None) -> str | None:
     """
     Sube un archivo a Cloudflare R2 y retorna una URL presignada.
     
@@ -38,6 +41,7 @@ def send_to_r2(filepath: str, manga: str, vol: str) -> str | None:
         filepath: Ruta local del archivo a subir.
         manga: Nombre del manga (para organizar en carpetas).
         vol: Nombre del volumen o capítulo.
+        app_config: Configuración de la aplicación.
         
     Returns:
         URL presignada válida por 7 días o None si falla.
@@ -46,12 +50,13 @@ def send_to_r2(filepath: str, manga: str, vol: str) -> str | None:
         logger.error(f"Archivo no encontrado para subir a R2: {filepath}")
         return None
 
-    bucket_name = os.environ.get("R2_BUCKET_NAME")
+    config = app_config or APP_CONFIG
+    bucket_name = config.r2_bucket_name
     if not bucket_name:
-        logger.error("No se ha definido R2_BUCKET_NAME en el archivo .env")
+        logger.error("No se configuró el nombre del bucket R2 (R2_BUCKET_NAME).")
         return None
 
-    s3 = get_r2_client()
+    s3 = get_r2_client(app_config=config)
     if not s3:
         return None
 

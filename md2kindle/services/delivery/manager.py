@@ -51,7 +51,7 @@ def ask_fallback_choice(
     return "r2"
 
 
-def send_r2_link_to_telegram(manga: str, vol: str, mobi_file: str, url: str) -> None:
+def send_r2_link_to_telegram(manga: str, vol: str, mobi_file: str, url: str, app_config: AppConfig | None = None) -> None:
     """Send a Cloudflare R2 download link to Telegram."""
     size_mb = os.path.getsize(mobi_file) / (1024 * 1024)
     safe_manga = html.escape(manga)
@@ -62,26 +62,23 @@ def send_r2_link_to_telegram(manga: str, vol: str, mobi_file: str, url: str) -> 
         f"🔒 Cloudflare R2 (archivo de {size_mb:.2f} MB). Expira en 7d:\n\n"
         f"🔗 <a href='{safe_url}'>DESCARGAR AHORA</a>"
     )
-    send_message(msg_html, parse_mode="HTML")
+    send_message(msg_html, parse_mode="HTML", app_config=app_config)
 
 
 def _deliver_via_telegram(
     mobi_file: str, params: PipelineContext, app_config: AppConfig
 ) -> None:
-    if app_config is APP_CONFIG:
-        send_to_telegram(mobi_file)
-    else:
-        send_to_telegram(mobi_file, app_config=app_config)
+    send_to_telegram(mobi_file, app_config=app_config)
     manga, vol = format_manga_title(mobi_file, app_config.output_folder_kcc)
-    log_download(manga, vol, params.manga.lang, mobi_file, "telegram")
+    log_download(manga, vol, params.manga.lang, mobi_file, "telegram", app_config=app_config)
 
 
 def _deliver_via_r2(mobi_file: str, params: PipelineContext, app_config: AppConfig) -> None:
     manga, vol = format_manga_title(mobi_file, app_config.output_folder_kcc)
-    url = send_to_r2(mobi_file, manga, vol)
+    url = send_to_r2(mobi_file, manga, vol, app_config=app_config)
     if url:
-        send_r2_link_to_telegram(manga, vol, mobi_file, url)
-        log_download(manga, vol, params.manga.lang, mobi_file, "r2")
+        send_r2_link_to_telegram(manga, vol, mobi_file, url, app_config=app_config)
+        log_download(manga, vol, params.manga.lang, mobi_file, "r2", app_config=app_config)
         return
 
     logger.warning(
@@ -109,10 +106,10 @@ def deliver_files(
 
     usb_detected = False
     for mobi_file in mobi_files:
-        if send_to_usb(mobi_file, params.manga.title):
+        if send_to_usb(mobi_file, params.manga.title, app_config=app_config):
             usb_detected = True
             manga, vol = format_manga_title(mobi_file, app_config.output_folder_kcc)
-            log_download(manga, vol, params.manga.lang, mobi_file, "usb")
+            log_download(manga, vol, params.manga.lang, mobi_file, "usb", app_config=app_config)
 
     if params.delivery.r2:
         for mobi_file in mobi_files:

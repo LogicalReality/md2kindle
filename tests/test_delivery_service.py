@@ -32,7 +32,7 @@ def make_params(**overrides):
 
 def test_deliver_files_no_files_does_nothing(monkeypatch):
     calls = []
-    monkeypatch.setattr(service, "send_to_usb", lambda *args: calls.append(args))
+    monkeypatch.setattr(service, "send_to_usb", lambda *args, **kwargs: calls.append(args))
 
     service.deliver_files([], make_params())
 
@@ -41,9 +41,9 @@ def test_deliver_files_no_files_does_nothing(monkeypatch):
 
 def test_deliver_files_logs_usb_success(monkeypatch):
     calls = []
-    monkeypatch.setattr(service, "send_to_usb", lambda *args: True)
-    monkeypatch.setattr(service, "format_manga_title", lambda *args: ("Manga", "Vol. 1"))
-    monkeypatch.setattr(service, "log_download", lambda *args: calls.append(args))
+    monkeypatch.setattr(service, "send_to_usb", lambda *args, **kwargs: True)
+    monkeypatch.setattr(service, "format_manga_title", lambda *args, **kwargs: ("Manga", "Vol. 1"))
+    monkeypatch.setattr(service, "log_download", lambda *args, **kwargs: calls.append(args))
 
     service.deliver_files(["book.mobi"], make_params())
 
@@ -52,11 +52,11 @@ def test_deliver_files_logs_usb_success(monkeypatch):
 
 def test_deliver_files_explicit_r2_sends_link_and_logs(monkeypatch):
     calls = []
-    monkeypatch.setattr(service, "send_to_usb", lambda *args: False)
-    monkeypatch.setattr(service, "format_manga_title", lambda *args: ("Manga", "Vol. 1"))
-    monkeypatch.setattr(service, "send_to_r2", lambda *args: "https://example.test/book")
+    monkeypatch.setattr(service, "send_to_usb", lambda *args, **kwargs: False)
+    monkeypatch.setattr(service, "format_manga_title", lambda *args, **kwargs: ("Manga", "Vol. 1"))
+    monkeypatch.setattr(service, "send_to_r2", lambda *args, **kwargs: "https://example.test/book")
     monkeypatch.setattr(service, "send_message", lambda msg, **kwargs: calls.append(("msg", msg)))
-    monkeypatch.setattr(service, "log_download", lambda *args: calls.append(("log", args)))
+    monkeypatch.setattr(service, "log_download", lambda *args, **kwargs: calls.append(("log", args)))
     monkeypatch.setattr(service.os.path, "getsize", lambda _: 1024 * 1024)
 
     service.deliver_files(["book.mobi"], make_params(r2=True))
@@ -67,10 +67,10 @@ def test_deliver_files_explicit_r2_sends_link_and_logs(monkeypatch):
 
 def test_deliver_files_explicit_telegram_sends_and_logs(monkeypatch):
     calls = []
-    monkeypatch.setattr(service, "send_to_usb", lambda *args: False)
-    monkeypatch.setattr(service, "send_to_telegram", lambda path: calls.append(("telegram", path)))
-    monkeypatch.setattr(service, "format_manga_title", lambda *args: ("Manga", "Vol. 1"))
-    monkeypatch.setattr(service, "log_download", lambda *args: calls.append(("log", args)))
+    monkeypatch.setattr(service, "send_to_usb", lambda *args, **kwargs: False)
+    monkeypatch.setattr(service, "send_to_telegram", lambda path, **kwargs: calls.append(("telegram", path)))
+    monkeypatch.setattr(service, "format_manga_title", lambda *args, **kwargs: ("Manga", "Vol. 1"))
+    monkeypatch.setattr(service, "log_download", lambda *args, **kwargs: calls.append(("log", args)))
 
     service.deliver_files(["book.mobi"], make_params(telegram=True))
 
@@ -83,11 +83,11 @@ def test_deliver_files_explicit_telegram_sends_and_logs(monkeypatch):
 def test_deliver_files_interactive_fallback_to_r2(monkeypatch):
     calls = []
     monkeypatch.setattr(service.sys, "argv", ["md2kindle"])
-    monkeypatch.setattr(service, "send_to_usb", lambda *args: False)
-    monkeypatch.setattr(service, "format_manga_title", lambda *args: ("Manga", "Vol. 1"))
-    monkeypatch.setattr(service, "send_to_r2", lambda *args: "https://example.test/book")
+    monkeypatch.setattr(service, "send_to_usb", lambda *args, **kwargs: False)
+    monkeypatch.setattr(service, "format_manga_title", lambda *args, **kwargs: ("Manga", "Vol. 1"))
+    monkeypatch.setattr(service, "send_to_r2", lambda *args, **kwargs: "https://example.test/book")
     monkeypatch.setattr(service, "send_message", lambda msg, **kwargs: calls.append(("msg", msg)))
-    monkeypatch.setattr(service, "log_download", lambda *args: calls.append(("log", args)))
+    monkeypatch.setattr(service, "log_download", lambda *args, **kwargs: calls.append(("log", args)))
     monkeypatch.setattr(service.os.path, "getsize", lambda _: 1024 * 1024)
 
     service.deliver_files(["book.mobi"], make_params(), input_func=lambda _: "")
@@ -99,10 +99,10 @@ def test_deliver_files_interactive_fallback_to_r2(monkeypatch):
 def test_deliver_files_interactive_fallback_to_telegram(monkeypatch):
     calls = []
     monkeypatch.setattr(service.sys, "argv", ["md2kindle"])
-    monkeypatch.setattr(service, "send_to_usb", lambda *args: False)
-    monkeypatch.setattr(service, "send_to_telegram", lambda path: calls.append(("telegram", path)))
-    monkeypatch.setattr(service, "format_manga_title", lambda *args: ("Manga", "Vol. 1"))
-    monkeypatch.setattr(service, "log_download", lambda *args: calls.append(("log", args)))
+    monkeypatch.setattr(service, "send_to_usb", lambda *args, **kwargs: False)
+    monkeypatch.setattr(service, "send_to_telegram", lambda path, **kwargs: calls.append(("telegram", path)))
+    monkeypatch.setattr(service, "format_manga_title", lambda *args, **kwargs: ("Manga", "Vol. 1"))
+    monkeypatch.setattr(service, "log_download", lambda *args, **kwargs: calls.append(("log", args)))
 
     service.deliver_files(["book.mobi"], make_params(), input_func=lambda _: "t")
 

@@ -2,11 +2,11 @@ import os
 import logging
 import requests
 import datetime
-from typing import Optional
+from md2kindle.core.config import APP_CONFIG, AppConfig
 
 logger = logging.getLogger(__name__)
 
-def log_download(manga: str, volume: str, lang: str, file_path: str, method: str) -> bool:
+def log_download(manga: str, volume: str, lang: str, file_path: str, method: str, app_config: AppConfig | None = None) -> bool:
     """
     Registers a successful download and delivery in Cloudflare D1.
     
@@ -16,13 +16,15 @@ def log_download(manga: str, volume: str, lang: str, file_path: str, method: str
         lang: Language of the downloaded manga
         file_path: Local path to the generated .mobi file to calculate its size
         method: Delivery method used ('r2', 'telegram', 'usb')
+        app_config: Application configuration
         
     Returns:
         True if logged successfully, False otherwise.
     """
-    account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID")
-    db_id = os.getenv("D1_DATABASE_ID")
-    api_token = os.getenv("D1_API_TOKEN")
+    config = app_config or APP_CONFIG
+    account_id = config.d1_account_id
+    db_id = config.d1_database_id
+    api_token = config.d1_api_token
 
     if not all([account_id, db_id, api_token]):
         logger.debug("D1 credentials not fully configured. Skipping history logging.")
