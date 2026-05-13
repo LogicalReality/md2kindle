@@ -39,12 +39,23 @@ def process_volume_flow(
     # --- SALTAR SI YA EXISTE ---
     rel_path = os.path.join(params.manga.title, f"Vol {vol}")
     expected_output_dir = os.path.join(app_config.output_folder_kcc, rel_path)
-    mobi_name = f"{params.manga.title} Vol. {vol}.mobi"
-    mobi_file = os.path.join(expected_output_dir, mobi_name)
-
-    if os.path.exists(mobi_file):
-        logger.info("%s ya existe. Saltando descarga y conversión...", mobi_name)
-        return [mobi_file]
+    
+    # Buscar cualquier .mobi en la carpeta destino que parezca ser este volumen
+    existing_mobis = []
+    if os.path.exists(expected_output_dir):
+        existing_mobis = glob.glob(os.path.join(expected_output_dir, "*.mobi"))
+    
+    if existing_mobis:
+        # Si hay más de uno, preferimos el que tenga el nombre "oficial"
+        mobi_name = f"{params.manga.title} Vol. {vol}.mobi"
+        mobi_file = os.path.join(expected_output_dir, mobi_name)
+        if mobi_file in existing_mobis:
+            logger.info("Encontrado %s. Saltando descarga y conversión...", mobi_name)
+            return [mobi_file]
+        
+        # Si no, devolvemos el primero que encontramos (probablemente generado por una versión anterior)
+        logger.info("Encontrado archivo MOBI existente en %s. Saltando descarga y conversión...", expected_output_dir)
+        return [existing_mobis[0]]
 
     folder = os.path.join(base_path, f"Vol {vol}")
     os.makedirs(folder, exist_ok=True)

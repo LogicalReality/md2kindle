@@ -38,13 +38,22 @@ def process_chapter_flow(
     # --- SALTAR SI YA EXISTE ---
     rel_path = os.path.join(params.manga.title, suffix)
     expected_output_dir = os.path.join(app_config.output_folder_kcc, rel_path)
-    # El conversor renombra el archivo para incluir el título de la serie
-    mobi_name = f"{params.manga.title} {suffix}.mobi"
-    mobi_file = os.path.join(expected_output_dir, mobi_name)
-
-    if os.path.exists(mobi_file):
-        logger.info("%s.mobi ya existe. Saltando descarga y conversión...", suffix)
-        return [mobi_file]
+    
+    # Buscar cualquier .mobi en la carpeta destino que parezca ser este rango
+    existing_mobis = []
+    if os.path.exists(expected_output_dir):
+        existing_mobis = glob.glob(os.path.join(expected_output_dir, "*.mobi"))
+    
+    if existing_mobis:
+        # Si hay más de uno, preferimos el que tenga el nombre "oficial"
+        mobi_name = f"{params.manga.title} {suffix}.mobi"
+        mobi_file = os.path.join(expected_output_dir, mobi_name)
+        if mobi_file in existing_mobis:
+            logger.info("Encontrado %s. Saltando descarga y conversión...", mobi_name)
+            return [mobi_file]
+        
+        logger.info("Encontrado archivo MOBI existente en %s. Saltando descarga y conversión...", expected_output_dir)
+        return [existing_mobis[0]]
     else:
 
         # 2. --- SALTAR DESCARGA SI YA HAY CBZ ---
