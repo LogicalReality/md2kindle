@@ -2,6 +2,23 @@
 let dailyChartInstance = null;
 let methodChartInstance = null;
 
+// HTML escaping helper function to prevent XSS
+function escapeHtml(str) {
+    if (str === null || str === undefined) {
+        return '';
+    }
+    return String(str).replace(/[&<>"']/g, (m) => {
+        switch (m) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#039;';
+            default: return m;
+        }
+    });
+}
+
 // Configure Chart.js defaults for Dark Mode
 Chart.defaults.color = '#9ca3af';
 Chart.defaults.font.family = "'Inter', sans-serif";
@@ -81,7 +98,7 @@ function getMethodBadge(method) {
     const m = method ? method.toLowerCase() : 'unknown';
     const info = map[m] || { icon: 'ph-file', class: '', label: method || 'Unknown' };
     
-    return `<span class="badge ${info.class}"><i class="ph-fill ${info.icon}"></i> ${info.label}</span>`;
+    return `<span class="badge ${escapeHtml(info.class)}"><i class="ph-fill ${escapeHtml(info.icon)}"></i> ${escapeHtml(info.label)}</span>`;
 }
 
 function renderTable(recentData) {
@@ -100,12 +117,12 @@ function renderTable(recentData) {
         const tr = document.createElement('tr');
         tr.classList.add('table-row');
         tr.innerHTML = `
-            <td class="td-manga"><strong>${row.manga}</strong></td>
-            <td class="td-volume">Vol. ${row.volume}</td>
-            <td class="td-lang">${row.lang.toUpperCase()}</td>
-            <td class="td-size">${row.size_mb ? row.size_mb.toFixed(1) + ' MB' : '-'}</td>
+            <td class="td-manga"><strong>${escapeHtml(row.manga)}</strong></td>
+            <td class="td-volume">Vol. ${escapeHtml(row.volume)}</td>
+            <td class="td-lang">${escapeHtml(row.lang.toUpperCase())}</td>
+            <td class="td-size">${row.size_mb ? escapeHtml(row.size_mb.toFixed(1)) + ' MB' : '-'}</td>
             <td class="td-method">${getMethodBadge(row.method)}</td>
-            <td class="td-date">${dateStr}</td>
+            <td class="td-date">${escapeHtml(dateStr)}</td>
         `;
         tbody.appendChild(tr);
     });
