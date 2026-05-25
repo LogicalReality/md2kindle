@@ -48,10 +48,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd835c2494553250106260a927a3c306d # v5.0.0
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: '3.13'
 
@@ -92,25 +92,38 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
           D1_API_TOKEN: ${{ secrets.D1_API_TOKEN }}
+          INPUT_URL: ${{ github.event.inputs.url }}
+          INPUT_MODE: ${{ github.event.inputs.mode }}
+          INPUT_START: ${{ github.event.inputs.start }}
+          INPUT_END: ${{ github.event.inputs.end }}
+          INPUT_LANG: ${{ github.event.inputs.lang }}
+          INPUT_SKIP_ONESHOTS: ${{ github.event.inputs.skip_oneshots }}
+          INPUT_USE_R2: ${{ github.event.inputs.use_r2 }}
+          INPUT_USE_TELEGRAM: ${{ github.event.inputs.use_telegram }}
         run: |
-          # Construir comando con los inputs de GitHub
-          CMD="python -m md2kindle --url '${{ github.event.inputs.url }}' --mode '${{ github.event.inputs.mode }}' --start '${{ github.event.inputs.start }}' --lang '${{ github.event.inputs.lang }}'"
+          # Construir comando usando un array de Bash para evitar la inyección de código
+          ARGS=(
+            --url "$INPUT_URL"
+            --mode "$INPUT_MODE"
+            --start "$INPUT_START"
+            --lang "$INPUT_LANG"
+          )
           
-          if [ -n "${{ github.event.inputs.end }}" ]; then
-            CMD="$CMD --end '${{ github.event.inputs.end }}'"
+          if [ -n "$INPUT_END" ]; then
+            ARGS+=(--end "$INPUT_END")
           fi
           
-          if [ "${{ github.event.inputs.skip_oneshots }}" = "true" ]; then
-            CMD="$CMD --skip-oneshots"
+          if [ "$INPUT_SKIP_ONESHOTS" = "true" ]; then
+            ARGS+=(--skip-oneshots)
           fi
           
-          if [ "${{ github.event.inputs.use_r2 }}" = "true" ]; then
-            CMD="$CMD --r2"
+          if [ "$INPUT_USE_R2" = "true" ]; then
+            ARGS+=(--r2)
           fi
 
-          if [ "${{ github.event.inputs.use_telegram }}" = "true" ]; then
-            CMD="$CMD --telegram"
+          if [ "$INPUT_USE_TELEGRAM" = "true" ]; then
+            ARGS+=(--telegram)
           fi
           
-          echo "Ejecutando: $CMD"
-          eval $CMD
+          echo "Ejecutando: python -m md2kindle ${ARGS[@]}"
+          python -m md2kindle "${ARGS[@]}"
